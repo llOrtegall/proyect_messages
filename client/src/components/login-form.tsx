@@ -1,37 +1,47 @@
-import { cn } from "@/lib/utils"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { cn } from "@/lib/utils"
+import { FormEvent, useState } from "react"
+import axios from "axios"
 
-export function LoginForm({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+export function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
+  const [username, setUsername] = useState("")
+  const [password, setPassword] = useState("")
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+
+    axios.post('/register', { username, password })
+      .then((response) => {
+        console.log(response.data)
+      })
+      .catch((error) => {
+        console.error(error)
+      })
+  }
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader>
           <CardTitle>Login to your account</CardTitle>
           <CardDescription>
-            Enter your email below to login to your account
+            Enter your username below to login to your account
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form>
+          <form onSubmit={handleSubmit}>
             <div className="flex flex-col gap-6">
               <div className="grid gap-3">
-                <Label htmlFor="email">Email</Label>
+                <Label>Email</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="m@example.com"
+                  id="username"
+                  type="text"
+                  placeholder="@lortegal"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   required
                 />
               </div>
@@ -45,14 +55,18 @@ export function LoginForm({
                     Forgot your password?
                   </a>
                 </div>
-                <Input id="password" type="password" required />
+                <Input
+                  id="password"
+                  placeholder="********"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
               </div>
               <div className="flex flex-col gap-3">
                 <Button type="submit" className="w-full">
                   Login
-                </Button>
-                <Button variant="outline" className="w-full">
-                  Login with Google
                 </Button>
               </div>
             </div>

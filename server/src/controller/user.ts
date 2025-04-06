@@ -10,17 +10,17 @@ export const registerUser = async (req: Request, res: Response) => {
     const result = await Users.create({ username, password })
 
     if (!result) {
-      return res.status(400).json({ message: 'User registration failed' });
+      res.status(400).json({ message: 'User registration failed' });
     }
     // Generate a JWT token
-    jwt.sign({ id: result.id}, JWT_SECRET, { expiresIn: '1h'}, (err, token) => {
+    jwt.sign({ id: result.id }, JWT_SECRET, { expiresIn: '1h' }, (err, token) => {
       if (err) {
-        return res.status(500).json({ message: 'Error generating token' });
+        res.status(500).json({ message: 'Error generating token' });
       }
       // Send the token as a response
       res.json({ token });
     })
-    
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Internal server error' });

@@ -9,6 +9,7 @@ const envSchema = z.object({
   MYSQL_USER: z.string().default("root"),
   MYSQL_PASSWORD: z.string().default(""),
   MYSQL_DATABASE: z.string().default("test"),
+  CLIENT_URL: z.string().default("http://localhost:3000"),
 });
 
 const { success, data, error } = envSchema.safeParse(process.env)
@@ -23,6 +24,7 @@ export const {
   MYSQL_DATABASE,
   MYSQL_HOST,
   MYSQL_PASSWORD,
+  CLIENT_URL,
   MYSQL_PORT,
   MYSQL_USER,
   NODE_ENV,
