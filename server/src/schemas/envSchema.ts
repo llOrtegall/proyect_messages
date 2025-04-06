@@ -4,7 +4,6 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(3000),
   NODE_ENV: z.enum(["development", "production"]).default("development"),
   JWT_SECRET: z.string(),
-  JWT_EXPIRES_IN: z.string().default("1h"),
   MYSQL_HOST: z.string().default("localhost"),
   MYSQL_PORT: z.coerce.number().default(3306),
   MYSQL_USER: z.string().default("root"),
@@ -20,7 +19,6 @@ if (!success) {
 }
 
 export const {
-  JWT_EXPIRES_IN,
   JWT_SECRET,
   MYSQL_DATABASE,
   MYSQL_HOST,
