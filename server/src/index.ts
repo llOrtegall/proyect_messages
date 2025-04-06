@@ -1,5 +1,6 @@
 import { PORT, CLIENT_URL } from './schemas/envSchema';
 import { usersRouter } from './routes/users';
+import cookie from 'cookie-parser';
 import express from 'express';
 import log from 'morgan';
 import cors from 'cors';
@@ -15,6 +16,7 @@ app.use(cors({
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookie());
 app.use(log('dev'));
 
 app.get('/', (req, res) => {

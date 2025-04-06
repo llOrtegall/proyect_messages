@@ -1,10 +1,26 @@
 import { IAuthContext, User } from '@/types/interfaces'
-import { createContext, useContext, useState } from 'react'
+import axios from 'axios'
+import { createContext, useContext, useEffect, useState } from 'react'
 
 const AuthContext = createContext<IAuthContext | undefined>(undefined)
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
+
+  useEffect(() => {
+    axios.get('/profile')
+    .then((response) => {
+      const { id, username } = response.data
+      setUser({ id, username })
+    })
+    .catch((error) => {
+      if (error.response?.status === 401) {
+        setUser(null)
+      } else {
+        console.error('Error fetching user profile:', error)
+      }
+    })
+  }, [])
   
   return (
     <AuthContext.Provider value={{ user, setUser }}>
