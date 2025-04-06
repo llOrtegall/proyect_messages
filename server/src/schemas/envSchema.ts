@@ -1,0 +1,32 @@
+import { z } from "zod";
+
+const envSchema = z.object({
+  PORT: z.coerce.number().default(3000),
+  NODE_ENV: z.enum(["development", "production"]).default("development"),
+  JWT_SECRET: z.string(),
+  JWT_EXPIRES_IN: z.string().default("1h"),
+  MYSQL_HOST: z.string().default("localhost"),
+  MYSQL_PORT: z.coerce.number().default(3306),
+  MYSQL_USER: z.string().default("root"),
+  MYSQL_PASSWORD: z.string().default(""),
+  MYSQL_DATABASE: z.string().default("test"),
+});
+
+const { success, data, error } = envSchema.safeParse(process.env)
+
+if (!success) {
+  console.error("Environment variables validation error:", error.format());
+  process.exit(1);
+}
+
+export const {
+  JWT_EXPIRES_IN,
+  JWT_SECRET,
+  MYSQL_DATABASE,
+  MYSQL_HOST,
+  MYSQL_PASSWORD,
+  MYSQL_PORT,
+  MYSQL_USER,
+  NODE_ENV,
+  PORT,
+} = data;
