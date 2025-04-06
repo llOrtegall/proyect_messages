@@ -1,0 +1,16 @@
+version: '3.7'
+
+services:
+  db_messages:
+    image: mysql:latest
+    container_name: db_messages
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "9010:3306"
+    volumes:
+      - ./db_messages_data:/var/lib/mysql
