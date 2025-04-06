@@ -2,20 +2,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { cn } from "@/lib/utils"
+import { useAuth } from "@/auth/AuthProvider"
 import { FormEvent, useState } from "react"
+import { cn } from "@/lib/utils"
 import axios from "axios"
+import { User } from "@/types/interfaces"
 
 export function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
+  const { setUser } = useAuth()
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
 
-    axios.post('/register', { username, password })
+    axios.post<User>('/register', { username, password })
       .then((response) => {
-        console.log(response.data)
+        const { id, username } = response.data
+        const userData: User = { id, username }
+        setUser(userData)
       })
       .catch((error) => {
         console.error(error)

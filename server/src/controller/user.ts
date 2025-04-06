@@ -20,7 +20,7 @@ export const registerUser = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Error generating token' });
       }
       // Send the token as a response
-      res.cookie('token', token).status(201).json({ _id: result.id, username: result.username });
+      res.cookie('token', token).status(201).json({ id: result.id, username: result.username });
     })
 
   } catch (error) {
