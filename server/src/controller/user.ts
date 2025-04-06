@@ -7,6 +7,8 @@ export const registerUser = async (req: Request, res: Response) => {
   const { username, password } = req.body;
 
   try {
+    await Users.sync();
+
     const result = await Users.create({ username, password })
 
     if (!result) {
