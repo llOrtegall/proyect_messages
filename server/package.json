@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch --env-file=.env ./src/index.ts"
+    "dev": "bun run --env-file=.env --watch ./src/index.ts"
   },
   "keywords": [],
   "author": "llOrTeGall",
