@@ -16,7 +16,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
 
-    axios.post<User>('/register', { username, password })
+    axios.post<User>('/login', { username, password })
       .then((response) => {
         const { id, username } = response.data
         const userData: User = { id, username }
