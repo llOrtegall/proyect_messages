@@ -4,6 +4,7 @@ import cookie from 'cookie-parser';
 import express from 'express';
 import log from 'morgan';
 import cors from 'cors';
+import { mysqlConn } from './connection/mysql';
 
 const app = express();
 
@@ -28,3 +29,9 @@ app.use('/api/v1', usersRouter);
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+mysqlConn.authenticate().then(() => {
+  console.log('Database connected');
+}).catch((err) => {
+  console.log(err);
+})
