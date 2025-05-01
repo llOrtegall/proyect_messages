@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { Users } from '../models/users';
 import jwt from 'jsonwebtoken';
 import bcript from 'bcryptjs';
+import { validateSchema } from '../../schemas/services';
 
 export const registerUser = async (req: Request, res: Response) => {
   const { username, password } = req.body;
@@ -24,6 +25,42 @@ export const registerUser = async (req: Request, res: Response) => {
       }
       // Send the token as a response
       res.cookie('token', token).status(201).json({ id: result.id, username: result.username });
+    })
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+export const loginUser = async (req: Request, res: Response) => {
+  const result = validateSchema(req.body)
+
+  try {
+    await Users.sync();
+
+    const user = await Users.findOne({
+      where: {
+        username: result.username
+      }
+    })
+
+    if (user === null) {
+      res.status(400).json({ message: 'User not found' });
+    }
+
+    const isPasswordValid = bcript.compareSync(result.password, user?.dataValues.password!);
+
+    if (!isPasswordValid) {
+      res.status(400).json({ message: 'Invalid password' });
+    }
+
+    jwt.sign({ id: user?.dataValues.id }, JWT_SECRET, { expiresIn: '1h' }, (err, token) => {
+      if (err) {
+        res.status(500).json({ message: 'Error generating token' });
+      }
+      // Send the token as a response
+      res.cookie('token', token).status(200).json({ id: user?.dataValues.id, username: user?.dataValues.username });
     })
 
   } catch (error) {
