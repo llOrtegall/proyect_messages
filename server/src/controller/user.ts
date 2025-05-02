@@ -70,6 +70,13 @@ export const loginUser = async (req: Request, res: Response) => {
   }
 }
 
+/**
+ * Handles the retrieval of the user's profile based on the JWT token from cookies.
+ * If the token is missing or invalid, it returns a 401 Unauthorized response.
+ * If the user is not found, it returns a 404 User not found response.
+ * On successful retrieval, it responds with the user's ID and username.
+ * In case of any internal server errors, it returns a 500 Internal server error response.
+ */
 export const userProfile = async (req: Request, res: Response) => {
   const token = req.cookies?.token;
 
@@ -78,14 +85,15 @@ export const userProfile = async (req: Request, res: Response) => {
     return;
   }
 
-  const decoded = await verifyToken(token);
-
-  if (!decoded) {
-    res.status(401).json({ message: 'Unauthorized' });
-    return;
-  }
-
   try {
+    const decoded = await verifyToken(token);
+
+
+    if (!decoded) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+
     const user = await Users.findOne({
       where: {
         id: decoded.id
@@ -99,7 +107,12 @@ export const userProfile = async (req: Request, res: Response) => {
 
     res.status(200).json({ id: user.id, username: user.username });
   } catch (error) {
-    console.error(error);
+    if(error instanceof Error){
+      if(error.message === 'TOKEN_EXPIRED'){
+        res.clearCookie('token').status(401).json({ message: 'Unauthorized' });
+        return;
+      }
+    }
     res.status(500).json({ message: 'Internal server error' });
   }
 

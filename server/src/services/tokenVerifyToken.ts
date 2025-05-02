@@ -9,8 +9,17 @@ interface UserInfoToken extends JwtPayload {
 export const verifyToken = (token: string): Promise<UserInfoToken | undefined> => {
   return new Promise((resolve, reject) => {
     jwt.verify(token, JWT_SECRET, (err, decoded) => {
-      if (err) throw new Error('Invalid token or expired token');
-      resolve(decoded as UserInfoToken);
+      if (err) {
+        if (err.message === 'jwt expired') {
+          reject(new Error('TOKEN_EXPIRED'));
+          return;
+        } else {
+          reject(new Error('INVALID_TOKEN'));
+          return;
+        }
+      } else {
+        resolve(decoded as UserInfoToken);
+      }
     });
   });
 };

@@ -42,20 +42,21 @@ const server = app.listen(3010);
 
 const wss = new WebSocketServer({ server });
 
-interface WebSocketUser extends WebSocket {
-  userId: string;
-  username: string;
-}
-
 interface User {
   id: string;
   username: string;
 }
 
+interface Message {
+  type: string;
+  content: string;
+  to: Pick<User, 'id'>;
+}
+
 // Define una lista o mapa para almacenar los usuarios conectados
 const connectedUsers: Map<string, User> = new Map();
 
-wss.on('connection', (conn: WebSocketUser, req) => {
+wss.on('connection', async (conn, req) => {
   const cookie = req.headers.cookie?.split(';').find((cookie) => cookie.startsWith('token='));
 
   if (!cookie) {
@@ -65,28 +66,30 @@ wss.on('connection', (conn: WebSocketUser, req) => {
 
   const token = cookie.split('=')[1];
 
-  verifyToken(token)
-    .then((decoded) => {
-      if (decoded) {
-        conn.userId = decoded.id;
-        conn.username = decoded.username;
-
-        // si el usuario ya esta conectado, no lo agregamos
-        if (connectedUsers.has(decoded.id)) {
-          return;
-        }
+  try {
+    const decoded = await verifyToken(token);
+    if (decoded) {
+      // si el usuario ya esta conectado, no lo agregamos
+      if (!connectedUsers.has(decoded.id)) {
         connectedUsers.set(decoded.id, { id: decoded.id, username: decoded.username });
       }
-    })
-    .catch((err) => {
-      console.log(err);
-    });
+    }
+  } catch (err) {
+    console.log(err);
+  }
 
-    [...wss.clients].forEach((client) => {
-      client.send(JSON.stringify({
-        onlineUsers: [...connectedUsers.values()]
-      }))
-    })
+  conn.on('message', (data) => {
+    const msgData: Message = JSON.parse(data.toString());
+    if (msgData.type === 'message') {
+      [...wss.clients].forEach( c => console.log(c))
+    }
+  });
 
+  // envio la lista de usuarios conectados a todos los clientes
+  [...wss.clients].forEach((client) => {
+    client.send(JSON.stringify({
+      onlineUsers: [...connectedUsers.values()]
+    }))
+  })
 
 });
