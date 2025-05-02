@@ -4,6 +4,7 @@ import { Users } from '../models/users';
 import jwt from 'jsonwebtoken';
 import bcript from 'bcryptjs';
 import { validateSchema } from '../../schemas/services';
+import { verifyToken } from '../services/tokenVerifyToken';
 
 export const registerUser = async (req: Request, res: Response) => {
   const { username, password } = req.body;
@@ -55,7 +56,7 @@ export const loginUser = async (req: Request, res: Response) => {
       res.status(400).json({ message: 'Invalid password' });
     }
 
-    jwt.sign({ id: user?.dataValues.id }, JWT_SECRET, { expiresIn: '1h' }, (err, token) => {
+    jwt.sign({ id: user?.dataValues.id, username: user?.dataValues.username }, JWT_SECRET, { expiresIn: '1h' }, (err, token) => {
       if (err) {
         res.status(500).json({ message: 'Error generating token' });
       }
@@ -77,27 +78,29 @@ export const userProfile = async (req: Request, res: Response) => {
     return;
   }
 
-  jwt.verify(token, JWT_SECRET, async (err: any, decoded: any) => {
-    if (err) {
-      res.status(403).json({ message: 'Forbidden' });
-    }
+  const decoded = await verifyToken(token);
 
-    try {
-      const user = await Users.findOne({
-        where: {
-          id: decoded.id
-        }
-      });
+  if (!decoded) {
+    res.status(401).json({ message: 'Unauthorized' });
+    return;
+  }
 
-      if (!user) {
-        res.status(404).json({ message: 'User not found' });
-        return;
+  try {
+    const user = await Users.findOne({
+      where: {
+        id: decoded.id
       }
+    });
 
-      res.status(200).json({ id: user.id, username: user.username });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Internal server error' });
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
     }
-  })
+
+    res.status(200).json({ id: user.id, username: user.username });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+
 }
