@@ -2,7 +2,6 @@ import { ArrowLeftFromLine, MessageSquare, SendHorizonal } from 'lucide-react'
 import { FormEvent, useEffect, useState } from 'react'
 import { Avatar } from '@/components/ui/avatar'
 import { useAuth } from '@/auth/AuthProvider'
-import { Button } from '@/components/ui/button'
 import { Footer } from '@/components/footer'
 
 const WS_URL = import.meta.env.VITE_WS_URL
@@ -21,7 +20,7 @@ interface UserChat {
 
 interface MessageData {
 	onlineUsers: UserChat[]
-	message: Message
+	messages: Message
 }
 
 export default function ChatApp() {
@@ -29,21 +28,42 @@ export default function ChatApp() {
 	const [onlinePeople, setOnlinePeople] = useState<UserChat[]>([])
 	const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
 	const [newMessageText, setNewMessageText] = useState<string>("")
+	const [messages, setMessages] = useState<Message[]>([])
 
 	const { user } = useAuth()
 
 	const handleMessage = (e: MessageEvent) => {
 		const messageData: MessageData = JSON.parse(e.data)
 
-		console.log(messageData);
-
 		if (messageData.onlineUsers) {
 			if (user) {
 				setOnlinePeople(messageData.onlineUsers.filter(u => u.id !== user.id))
 			}
-		} else if (messageData.message){
-			console.log(messageData.message);
+		} else if (messageData.messages) {
+			setMessages(prev => [...prev, messageData.messages])
 		}
+	}
+
+	const sendMessage = (e: FormEvent) => {
+		e.preventDefault();
+
+		if (ws && selectedContactId && user?.id) {
+			ws.send(JSON.stringify({
+				type: 'message',
+				content: newMessageText,
+				to: selectedContactId,
+				from: user.id
+			}));
+
+			setMessages(prev => [...prev, {
+				type: 'message',
+				content: newMessageText,
+				to: selectedContactId,
+				from: user.id
+			}])
+		}
+
+		setNewMessageText("")
 	}
 
 	// TODO: this is a ws connection, initialize it
@@ -54,18 +74,6 @@ export default function ChatApp() {
 		ws.addEventListener('message', handleMessage)
 	}, [])
 
-	const sendMessage = (e: FormEvent) => {
-		e.preventDefault();
-
-		if (ws && selectedContactId) {
-			ws.send(JSON.stringify({
-				type: 'message',
-				content: newMessageText,
-				to: selectedContactId
-			}))
-		}
-	}
-
 	return (
 		<section className='h-screen flex'>
 			<section className='w-3/12 bg-slate-100 p-2 h-screen'>
@@ -74,7 +82,7 @@ export default function ChatApp() {
 					<h1>Chat App Ortega</h1>
 				</header>
 
-				<ul className='gap-2 py-2 h-[calc(90vh-50px)] overflow-y-auto'>
+				<ul className='gap-2 py-2 h-[calc(80vh-50px)] overflow-y-auto'>
 					{onlinePeople.map((user) => (
 						<li
 							onClick={() => setSelectedContactId(user.id)}
@@ -98,10 +106,20 @@ export default function ChatApp() {
 				<div className='h-[calc(100vh-50px)] overflow-y-auto'>
 					{
 						selectedContactId ? (
-							<div className=' h-full p-2 rounded-md bg-blue-50'>
+							<div className='h-full p-2 rounded-md'>
 								<h2>Messages with {selectedContactId}</h2>
-								<ul>
-									<li></li>
+								<ul className='h-full overflow-y-auto space-y-2'>
+									{messages.map((message, index) => (
+										<li
+											key={index}
+											className={`p-2 rounded-md max-w-[80%] ${message.from === user?.id
+												? 'ml-auto bg-blue-700 text-white'
+												: 'mr-auto bg-blue-200 text-black'
+												}`}
+										>
+											{message.content}
+										</li>
+									))}
 								</ul>
 							</div>
 						) : (
