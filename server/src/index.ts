@@ -124,6 +124,9 @@ wss.on('connection', async (conn: SocketClient, req) => {
   conn.timer = setInterval(() => {
     conn.ping();
     conn.deathTimer = setTimeout(() => {
+      if (conn.id) {
+        connectedUsers.delete(conn.id);
+      }
       conn.isAlive = false;
       conn.terminate();
       notifyAboutOnlineUsers();
