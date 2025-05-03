@@ -10,5 +10,4 @@ export const Footer = ({ username }: { username: string }) => {
 
 		</footer>
 	)
-
 }
