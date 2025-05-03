@@ -1,8 +1,9 @@
 import { verifyToken } from './services/tokenVerifyToken';
 import { PORT, CLIENT_URL } from './schemas/envSchema';
+import { WebSocketServer, type WebSocket } from 'ws';
 import { mysqlConn } from './connection/mysql';
 import { usersRouter } from './routes/users';
-import { WebSocketServer, type WebSocket } from 'ws';
+import { Messages } from './models/messages';
 import cookie from 'cookie-parser';
 import express from 'express';
 import log from 'morgan';
@@ -85,13 +86,21 @@ wss.on('connection', async (conn: SocketClient, req) => {
     console.log(err);
   }
 
-  conn.on('message', (data) => {
+  conn.on('message', async(data) => {
     const msgData: Message = JSON.parse(data.toString());
-    if (msgData.type === 'message') {
+    if (msgData.type === 'message' && conn.id) {
+      // save message on db
+      await Messages.sync();
+      await Messages.create({
+        content: msgData.content,
+        from: conn.id,
+        to: msgData.to
+      });
+
       [...wss.clients]
       .filter((c: SocketClient) => c.id === msgData.to )
       .forEach((c: SocketClient) => c.send(JSON.stringify({
-        message: {
+        messages: {
           type: 'message',
           content: msgData.content,
           from: conn.id,
