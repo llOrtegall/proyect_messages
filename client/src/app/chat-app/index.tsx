@@ -1,4 +1,5 @@
-import { ArrowLeftFromLine, MessageSquare, SendHorizonal } from 'lucide-react'
+import { ArrowLeftFromLine, MessageSquare } from 'lucide-react'
+import { FormSendMessage } from '@/components/form-sendMessage'
 import { FormEvent, useEffect, useState } from 'react'
 import { Avatar } from '@/components/ui/avatar'
 import { useAuth } from '@/auth/AuthProvider'
@@ -27,7 +28,6 @@ export default function ChatApp() {
 	const [ws, setWs] = useState<WebSocket | null>(null)
 	const [onlinePeople, setOnlinePeople] = useState<UserChat[]>([])
 	const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
-	const [newMessageText, setNewMessageText] = useState<string>("")
 	const [messages, setMessages] = useState<Message[]>([])
 
 	const { user } = useAuth()
@@ -44,26 +44,30 @@ export default function ChatApp() {
 		}
 	}
 
-	const sendMessage = (e: FormEvent) => {
+	const sendMessage = (e: FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 
-		if (ws && selectedContactId && user?.id) {
+		const data = new FormData(e.currentTarget)
+		const newMessage = data.get('newMessageText') as string
+
+
+		if (ws && selectedContactId && user?.id && newMessage) {
 			ws.send(JSON.stringify({
 				type: 'message',
-				content: newMessageText,
+				content: newMessage,
 				to: selectedContactId,
 				from: user.id
 			}));
 
 			setMessages(prev => [...prev, {
 				type: 'message',
-				content: newMessageText,
+				content: newMessage,
 				to: selectedContactId,
 				from: user.id
 			}])
 		}
 
-		setNewMessageText("")
+		e.currentTarget.reset()
 	}
 
 	// TODO: this is a ws connection, initialize it
@@ -133,19 +137,7 @@ export default function ChatApp() {
 
 				{
 					!!selectedContactId && (
-						<form className='flex gap-2' onSubmit={sendMessage}>
-							<input
-								type='text'
-								placeholder='Send message here'
-								value={newMessageText}
-								onChange={(e) => setNewMessageText(e.target.value)}
-								className='border border-slate-300 flex-grow bg-white px-2 rounded-md'
-							/>
-							<button type='submit'
-								className='bg-blue-500 text-white rounded p-2'>
-								<SendHorizonal />
-							</button>
-						</form>
+						<FormSendMessage onSubmit={sendMessage} />
 					)
 				}
 			</main>
