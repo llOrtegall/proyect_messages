@@ -1,7 +1,9 @@
 import { ArrowLeftFromLine, MessageSquare, SendHorizonal } from 'lucide-react'
-import { Avatar } from '@/components/ui/avatar'
 import { FormEvent, useEffect, useState } from 'react'
+import { Avatar } from '@/components/ui/avatar'
 import { useAuth } from '@/auth/AuthProvider'
+import { Button } from '@/components/ui/button'
+import { Footer } from '@/components/footer'
 
 const WS_URL = import.meta.env.VITE_WS_URL
 
@@ -65,14 +67,14 @@ export default function ChatApp() {
 	}
 
 	return (
-		<main className='h-screen flex'>
-			<section className='w-3/12 bg-slate-100 p-2'>
+		<section className='h-screen flex'>
+			<section className='w-3/12 bg-slate-100 p-2 h-screen'>
 				<header className='flex items-center gap-2 text-blue-700 font-bold justify-center pt-2 pb-3 border-b-2 border-slate-200'>
 					<MessageSquare />
 					<h1>Chat App Ortega</h1>
 				</header>
 
-				<ul className='gap-2 py-2'>
+				<ul className='gap-2 py-2 h-[calc(90vh-50px)] overflow-y-auto'>
 					{onlinePeople.map((user) => (
 						<li
 							onClick={() => setSelectedContactId(user.id)}
@@ -89,8 +91,9 @@ export default function ChatApp() {
 					))}
 				</ul>
 
+				<Footer username={user?.username || ""} />
 			</section>
-			<section className='w-9/12 bg-slate-200 p-2'>
+			<main className='w-9/12 bg-slate-200 p-2'>
 
 				<div className='h-[calc(100vh-50px)] overflow-y-auto'>
 					{
@@ -127,7 +130,7 @@ export default function ChatApp() {
 						</form>
 					)
 				}
-			</section>
-		</main>
+			</main>
+		</section>
 	)
 }
