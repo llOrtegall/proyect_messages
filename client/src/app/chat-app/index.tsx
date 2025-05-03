@@ -5,6 +5,13 @@ import { useAuth } from '@/auth/AuthProvider'
 
 const WS_URL = import.meta.env.VITE_WS_URL
 
+interface Message {
+	type: string
+	content: string
+	from: string
+	to: string
+}
+
 interface UserChat {
 	id: string
 	username: string
@@ -12,6 +19,7 @@ interface UserChat {
 
 interface MessageData {
 	onlineUsers: UserChat[]
+	message: Message
 }
 
 export default function ChatApp() {
@@ -25,10 +33,14 @@ export default function ChatApp() {
 	const handleMessage = (e: MessageEvent) => {
 		const messageData: MessageData = JSON.parse(e.data)
 
+		console.log(messageData);
+
 		if (messageData.onlineUsers) {
 			if (user) {
 				setOnlinePeople(messageData.onlineUsers.filter(u => u.id !== user.id))
 			}
+		} else if (messageData.message){
+			console.log(messageData.message);
 		}
 	}
 

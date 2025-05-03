@@ -2,7 +2,7 @@ import { verifyToken } from './services/tokenVerifyToken';
 import { PORT, CLIENT_URL } from './schemas/envSchema';
 import { mysqlConn } from './connection/mysql';
 import { usersRouter } from './routes/users';
-import { WebSocketServer } from 'ws';
+import { WebSocketServer, type WebSocket } from 'ws';
 import cookie from 'cookie-parser';
 import express from 'express';
 import log from 'morgan';
@@ -40,6 +40,11 @@ mysqlConn.authenticate().then(() => {
 
 const server = app.listen(3010);
 
+interface SocketClient extends WebSocket {
+  id?: string;
+  username?: string;
+}
+
 const wss = new WebSocketServer({ server });
 
 interface User {
@@ -50,13 +55,13 @@ interface User {
 interface Message {
   type: string;
   content: string;
-  to: Pick<User, 'id'>;
+  to: string;
 }
 
 // Define una lista o mapa para almacenar los usuarios conectados
 const connectedUsers: Map<string, User> = new Map();
 
-wss.on('connection', async (conn, req) => {
+wss.on('connection', async (conn: SocketClient, req) => {
   const cookie = req.headers.cookie?.split(';').find((cookie) => cookie.startsWith('token='));
 
   if (!cookie) {
@@ -73,6 +78,8 @@ wss.on('connection', async (conn, req) => {
       if (!connectedUsers.has(decoded.id)) {
         connectedUsers.set(decoded.id, { id: decoded.id, username: decoded.username });
       }
+      conn.id = decoded.id;
+      conn.username = decoded.username;
     }
   } catch (err) {
     console.log(err);
@@ -81,7 +88,16 @@ wss.on('connection', async (conn, req) => {
   conn.on('message', (data) => {
     const msgData: Message = JSON.parse(data.toString());
     if (msgData.type === 'message') {
-      [...wss.clients].forEach( c => console.log(c))
+      [...wss.clients]
+      .filter((c: SocketClient) => c.id === msgData.to )
+      .forEach((c: SocketClient) => c.send(JSON.stringify({
+        message: {
+          type: 'message',
+          content: msgData.content,
+          from: conn.id,
+          to: msgData.to
+        }
+      })))
     }
   });
 
