@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useRef, useState } from 'react'
 import { Avatar } from '@/components/ui/avatar'
 import { useAuth } from '@/auth/AuthProvider'
 import { Footer } from '@/components/footer'
+import axios from 'axios'
 
 const WS_URL = import.meta.env.VITE_WS_URL
 
@@ -70,6 +71,25 @@ export default function ChatApp() {
 		e.currentTarget.reset()
 	}
 
+	const connetToWs = () => {
+		const ws = new WebSocket(WS_URL)
+		setWs(ws)
+
+		ws.addEventListener('message', handleMessage);
+		ws.addEventListener('close', () => {
+			console.log('Connection closed');
+			setTimeout(() => {
+				console.log('Try... Reconnecting...');
+				connetToWs()
+			}, 10000)
+		})
+	}
+
+	// TODO: this is a ws connection, initialize it
+	useEffect(() => {
+		connetToWs()
+	}, [])
+
 	useEffect(() => {
 		const div = messagesEndRef.current
 		if (div) {
@@ -77,13 +97,17 @@ export default function ChatApp() {
 		}
 	}, [messages])
 
-	// TODO: this is a ws connection, initialize it
 	useEffect(() => {
-		const ws = new WebSocket(WS_URL)
-		setWs(ws)
-
-		ws.addEventListener('message', handleMessage)
-	}, [])
+		if(selectedContactId){
+			axios.get(`/messages/${selectedContactId}`)
+			.then((response) => {
+				setMessages(response.data)
+			})
+			.catch((error) => {
+				console.error(error)
+			})
+		}
+	}, [selectedContactId])
 
 	return (
 		<section className='h-screen flex'>

@@ -8,6 +8,7 @@ import cookie from 'cookie-parser';
 import express from 'express';
 import log from 'morgan';
 import cors from 'cors';
+import { Op } from 'sequelize';
 
 const app = express();
 
@@ -28,6 +29,28 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/v1', usersRouter);
+
+app.get('/api/v1/messages/:id', async(req, res) => {
+  const { id } = req.params;
+  const user = await verifyToken(req.cookies.token);
+
+  if (!user) {
+    res.status(401).json({ message: 'Unauthorized' });
+    return;
+  }
+
+  const messages = await Messages.findAll({
+    where: {
+      [Op.or]: [
+        { from: user.id, to: id },
+        { from: id, to: user.id }
+      ]
+    },
+    order: [['createdAt', 'ASC']]
+  });
+
+  res.json(messages);
+});
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
@@ -116,5 +139,4 @@ wss.on('connection', async (conn: SocketClient, req) => {
       onlineUsers: [...connectedUsers.values()]
     }))
   })
-
 });
