@@ -1,6 +1,6 @@
 import { ArrowLeftFromLine, MessageSquare } from 'lucide-react'
 import { FormSendMessage } from '@/components/form-sendMessage'
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useEffect, useRef, useState } from 'react'
 import { Avatar } from '@/components/ui/avatar'
 import { useAuth } from '@/auth/AuthProvider'
 import { Footer } from '@/components/footer'
@@ -32,6 +32,8 @@ export default function ChatApp() {
 
 	const { user } = useAuth()
 
+	const messagesEndRef = useRef<HTMLDivElement>(null)
+
 	const handleMessage = (e: MessageEvent) => {
 		const messageData: MessageData = JSON.parse(e.data)
 
@@ -50,7 +52,6 @@ export default function ChatApp() {
 		const data = new FormData(e.currentTarget)
 		const newMessage = data.get('newMessageText') as string
 
-
 		if (ws && selectedContactId && user?.id && newMessage) {
 			ws.send(JSON.stringify({
 				type: 'message',
@@ -66,9 +67,15 @@ export default function ChatApp() {
 				from: user.id
 			}])
 		}
-
 		e.currentTarget.reset()
 	}
+
+	useEffect(() => {
+		const div = messagesEndRef.current
+		if (div) {
+			div.scrollIntoView({ behavior: 'smooth', block: 'end' })
+		}
+	}, [messages])
 
 	// TODO: this is a ws connection, initialize it
 	useEffect(() => {
@@ -80,6 +87,7 @@ export default function ChatApp() {
 
 	return (
 		<section className='h-screen flex'>
+
 			<section className='w-3/12 bg-slate-100 p-2 h-screen'>
 				<header className='flex items-center gap-2 text-blue-700 font-bold justify-center pt-2 pb-3 border-b-2 border-slate-200'>
 					<MessageSquare />
@@ -105,14 +113,14 @@ export default function ChatApp() {
 
 				<Footer username={user?.username || ""} />
 			</section>
+
 			<main className='w-9/12 bg-slate-200 p-2'>
 
-				<div className='h-[calc(100vh-50px)] overflow-y-auto'>
+				<div className='h-[90vh]'>
 					{
 						selectedContactId ? (
-							<div className='h-full p-2 rounded-md'>
-								<h2>Messages with {selectedContactId}</h2>
-								<ul className='h-full overflow-y-auto space-y-2'>
+							<section className='relative h-full'>
+								<ul className='overflow-y-auto absolute top-10 right-2 left-2 bottom-4 space-y-2'>
 									{messages.map((message, index) => (
 										<li
 											key={index}
@@ -124,8 +132,9 @@ export default function ChatApp() {
 											{message.content}
 										</li>
 									))}
+									<div ref={messagesEndRef}></div>
 								</ul>
-							</div>
+							</section>
 						) : (
 							<div className='text-center flex items-center justify-center h-full gap-2'>
 								<ArrowLeftFromLine />

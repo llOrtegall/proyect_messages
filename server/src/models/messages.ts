@@ -10,7 +10,7 @@ class Messages extends Model<InferAttributes<Messages>, InferCreationAttributes<
 
 Messages.init({
   id: { type: DataTypes.STRING(36), defaultValue: DataTypes.UUIDV4, allowNull: false, primaryKey: true },
-  content: { type: DataTypes.STRING(255), allowNull: false },
+  content: { type: DataTypes.TEXT, allowNull: false },
   from: { type: DataTypes.STRING(36), allowNull: false },
   to: { type: DataTypes.STRING(36), allowNull: false },
 }, {
