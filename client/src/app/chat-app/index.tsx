@@ -28,6 +28,7 @@ interface MessageData {
 export default function ChatApp() {
 	const [ws, setWs] = useState<WebSocket | null>(null)
 	const [onlinePeople, setOnlinePeople] = useState<UserChat[]>([])
+	const [offlinePeople, setOfflinePeople] = useState<UserChat[]>([])
 	const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
 	const [messages, setMessages] = useState<Message[]>([])
 
@@ -109,6 +110,16 @@ export default function ChatApp() {
 		}
 	}, [selectedContactId])
 
+	useEffect(() => {
+		axios.get('/people')
+			.then((response) => {
+				setOfflinePeople(response.data)
+			})
+			.catch((error) => {
+				console.error(error)
+			})
+	}, [onlinePeople])
+
 	return (
 		<section className='h-screen flex'>
 
@@ -129,7 +140,13 @@ export default function ChatApp() {
 									<div className='w-1 h-8 rounded-md bg-blue-500'></div>
 								)
 							}
-							<Avatar initialString={user.username[0]} id={user.id} />
+							<Avatar initialString={user.username[0]} id={user.id} online={true} />
+							<span>{user.username}</span>
+						</li>
+					))}
+					{offlinePeople.map((user) => (
+						<li className='border-b px-4 py-2 flex items-center gap-2'>
+							<Avatar initialString={user.username[0]} id={user.id} online={false} />
 							<span>{user.username}</span>
 						</li>
 					))}

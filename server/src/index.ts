@@ -9,6 +9,7 @@ import express from 'express';
 import log from 'morgan';
 import cors from 'cors';
 import { Op } from 'sequelize';
+import { Users } from './models/users';
 
 const app = express();
 
@@ -51,6 +52,28 @@ app.get('/api/v1/messages/:id', async(req, res) => {
 
   res.json(messages);
 });
+
+app.get('/api/v1/people', async(req, res) => {
+  const user = await verifyToken(req.cookies.token);
+
+  if (!user) {
+    res.status(401).json({ message: 'Unauthorized' });
+    return;
+  }
+
+  const users = await Users.findAll({
+    attributes: ['id', 'username'],
+    where: {
+      id: { [Op.ne]: user.id }
+    }
+  })
+
+  const onlineUsers = [...connectedUsers.values()];
+
+  const usersOffline = users.filter((user) => !onlineUsers.some((u) => u.id === user.id));
+
+  res.json(usersOffline);
+})
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
