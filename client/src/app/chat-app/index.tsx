@@ -99,14 +99,14 @@ export default function ChatApp() {
 	}, [messages])
 
 	useEffect(() => {
-		if(selectedContactId){
+		if (selectedContactId) {
 			axios.get(`/messages/${selectedContactId}`)
-			.then((response) => {
-				setMessages(response.data)
-			})
-			.catch((error) => {
-				console.error(error)
-			})
+				.then((response) => {
+					setMessages(response.data)
+				})
+				.catch((error) => {
+					console.error(error)
+				})
 		}
 	}, [selectedContactId])
 
@@ -145,7 +145,7 @@ export default function ChatApp() {
 						</li>
 					))}
 					{offlinePeople.map((user) => (
-						<li className='border-b px-4 py-2 flex items-center gap-2'>
+						<li className='border-b px-4 py-2 flex items-center gap-2' key={user.id}>
 							<Avatar initialString={user.username[0]} id={user.id} online={false} />
 							<span>{user.username}</span>
 						</li>

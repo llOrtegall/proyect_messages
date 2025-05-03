@@ -90,6 +90,9 @@ const server = app.listen(3010);
 interface SocketClient extends WebSocket {
   id?: string;
   username?: string;
+  isAlive?: boolean;
+  timer?: NodeJS.Timeout;
+  deathTimer?: NodeJS.Timeout;
 }
 
 const wss = new WebSocketServer({ server });
@@ -109,6 +112,29 @@ interface Message {
 const connectedUsers: Map<string, User> = new Map();
 
 wss.on('connection', async (conn: SocketClient, req) => {
+  function notifyAboutOnlineUsers() {
+    [...wss.clients].forEach((client) => {
+      client.send(JSON.stringify({
+        onlineUsers: [...connectedUsers.values()]
+      }))
+    })
+  }
+  conn.isAlive = true;
+
+  conn.timer = setInterval(() => {
+    conn.ping();
+    conn.deathTimer = setTimeout(() => {
+      conn.isAlive = false;
+      conn.terminate();
+      notifyAboutOnlineUsers();
+      console.log('User is dead');
+    }, 1000)
+  }, 5000);
+
+  conn.on('pong', () => {
+    clearTimeout(conn.deathTimer);
+  })
+
   const cookie = req.headers.cookie?.split(';').find((cookie) => cookie.startsWith('token='));
 
   if (!cookie) {
@@ -156,10 +182,11 @@ wss.on('connection', async (conn: SocketClient, req) => {
     }
   });
 
-  // envio la lista de usuarios conectados a todos los clientes
-  [...wss.clients].forEach((client) => {
-    client.send(JSON.stringify({
-      onlineUsers: [...connectedUsers.values()]
-    }))
-  })
+  notifyAboutOnlineUsers();
 });
+
+wss.on('close', (conn: SocketClient) => {
+  if (conn.id) {
+    connectedUsers.delete(conn.id);
+  }
+})
