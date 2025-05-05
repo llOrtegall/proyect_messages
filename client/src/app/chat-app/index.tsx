@@ -42,6 +42,11 @@ export default function ChatApp() {
 		if (messageData.type === 'onlineUsers' && messageData.data instanceof Array) {
 			const removeMe = messageData.data.filter((u: UserChat) => user?.id !== u.id)
 			setOnlinePeople(removeMe)
+		} 
+
+		if(messageData.type === 'newMessage' && messageData.data instanceof Object){
+			const newMessage = messageData.data as Message
+			setMessages(prev => [...prev, newMessage])
 		}
 	}
 	

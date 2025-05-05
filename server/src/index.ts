@@ -1,10 +1,11 @@
+import { User, Message, DataWs, SocketClient } from './types/interfaces';
 import { verifyToken } from './services/tokenVerifyToken';
 import { PORT, CLIENT_URL } from './schemas/envSchema';
-import { WebSocketServer, type WebSocket } from 'ws';
 import { mysqlConn } from './connection/mysql';
 import { usersRouter } from './routes/users';
 import { Messages } from './models/messages';
 import { Users } from './models/users';
+import { WebSocketServer } from 'ws';
 import cookie from 'cookie-parser';
 import { Op } from 'sequelize';
 import express from 'express';
@@ -85,28 +86,8 @@ mysqlConn.authenticate().then(() => {
   console.log(err);
 })
 
-interface SocketClient extends WebSocket {
-  id?: string;
-  username?: string;
-  isAlive?: boolean;
-  timer?: NodeJS.Timeout;
-  deathTimer?: NodeJS.Timeout;
-}
-
 const wss = new WebSocketServer({ server: serverUp });
 
-interface User {
-  id: string;
-  username: string;
-}
-
-interface Message {
-  type: string;
-  content: string;
-  to: string;
-}
-
-// Define una lista o mapa para almacenar los usuarios conectados
 const connectedUsers: Map<string, User> = new Map();
 
 wss.on('connection', async (conn: SocketClient, req) => {
@@ -122,7 +103,6 @@ wss.on('connection', async (conn: SocketClient, req) => {
   try {
     const decoded = await verifyToken(token);
     if (decoded) {
-      // si el usuario ya esta conectado, no lo agregamos
       if (!connectedUsers.has(decoded.id)) {
         connectedUsers.set(decoded.id, { id: decoded.id, username: decoded.username });
       }
@@ -138,9 +118,16 @@ wss.on('connection', async (conn: SocketClient, req) => {
   });
 
   conn.on('message', (data, isBinary) => {
-    const msgData = JSON.parse(data.toString())
-    if (msgData.newMessage) {
-      const { content, to, from } = msgData.newMessage
+    const msgData: DataWs = JSON.parse(data.toString())
+    if (msgData.type === 'newMessage' && msgData.data instanceof Object) {
+      [...wss.clients].forEach((c: SocketClient) => {
+        if(c.id === msgData.data.to){
+          c.send(JSON.stringify({
+            type: 'newMessage',
+            data: msgData.data
+          }))
+        }
+      })
     }
   });
 
