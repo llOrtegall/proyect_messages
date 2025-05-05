@@ -21,14 +21,15 @@ interface UserChat {
 }
 
 interface MessageData {
-	onlineUsers: UserChat[]
-	messages: Message
+	type: string
+	onlineUsers?: UserChat[]
+	newMessage?: Message
 }
 
 export default function ChatApp() {
 	const [ws, setWs] = useState<WebSocket | null>(null)
 	const [onlinePeople, setOnlinePeople] = useState<UserChat[]>([])
-	const [offlinePeople, setOfflinePeople] = useState<UserChat[]>([])
+	// const [offlinePeople, setOfflinePeople] = useState<UserChat[]>([])
 	const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
 	const [messages, setMessages] = useState<Message[]>([])
 
@@ -39,14 +40,63 @@ export default function ChatApp() {
 	const handleMessage = (e: MessageEvent) => {
 		const messageData: MessageData = JSON.parse(e.data)
 
-		if (messageData.onlineUsers) {
-			if (user) {
-				setOnlinePeople(messageData.onlineUsers.filter(u => u.id !== user.id))
-			}
-		} else if (messageData.messages) {
-			setMessages(prev => [...prev, messageData.messages])
+		// show online users and remove me
+		if (messageData.type === 'onlineUsers' && messageData.onlineUsers) {
+			const removeMe = messageData.onlineUsers.filter(u => user?.id !== u.id)
+			setOnlinePeople(removeMe)
 		}
 	}
+
+	const connetToWs = () => {
+		const ws = new WebSocket(WS_URL)
+		setWs(ws)
+
+		ws.addEventListener('message', handleMessage);
+
+		ws.addEventListener('close', () => {
+			console.log('Connection closed');
+			setTimeout(() => {
+				console.log('Try... Reconnecting...');
+				connetToWs()
+			}, 10000)
+		})
+	}
+
+	// TODO: this is a ws connection, initialize it
+	useEffect(() => {
+		connetToWs()
+	}, [])
+
+	useEffect(() => {
+		const div = messagesEndRef.current
+		if (div) {
+			div.scrollIntoView({ behavior: 'smooth', block: 'end' })
+		}
+	}, [messages])
+
+	/*
+	useEffect(() => {
+		if (selectedContactId) {
+			axios.get(`/messages/${selectedContactId}`)
+				.then((response) => {
+					setMessages(response.data)
+				})
+				.catch((error) => {
+					console.error(error)
+				})
+		}
+	}, [selectedContactId])
+
+	useEffect(() => {
+		axios.get('/people')
+			.then((response) => {
+				setOfflinePeople(response.data)
+			})
+			.catch((error) => {
+				console.error(error)
+			})
+		}, [onlinePeople])
+	*/
 
 	const sendMessage = (e: FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
@@ -72,54 +122,6 @@ export default function ChatApp() {
 		e.currentTarget.reset()
 	}
 
-	const connetToWs = () => {
-		const ws = new WebSocket(WS_URL)
-		setWs(ws)
-
-		ws.addEventListener('message', handleMessage);
-		ws.addEventListener('close', () => {
-			console.log('Connection closed');
-			setTimeout(() => {
-				console.log('Try... Reconnecting...');
-				connetToWs()
-			}, 10000)
-		})
-	}
-
-	// TODO: this is a ws connection, initialize it
-	useEffect(() => {
-		connetToWs()
-	}, [])
-
-	useEffect(() => {
-		const div = messagesEndRef.current
-		if (div) {
-			div.scrollIntoView({ behavior: 'smooth', block: 'end' })
-		}
-	}, [messages])
-
-	useEffect(() => {
-		if (selectedContactId) {
-			axios.get(`/messages/${selectedContactId}`)
-				.then((response) => {
-					setMessages(response.data)
-				})
-				.catch((error) => {
-					console.error(error)
-				})
-		}
-	}, [selectedContactId])
-
-	useEffect(() => {
-		axios.get('/people')
-			.then((response) => {
-				setOfflinePeople(response.data)
-			})
-			.catch((error) => {
-				console.error(error)
-			})
-	}, [onlinePeople])
-
 	return (
 		<section className='h-screen flex'>
 
@@ -144,12 +146,12 @@ export default function ChatApp() {
 							<span>{user.username}</span>
 						</li>
 					))}
-					{offlinePeople.map((user) => (
+					{/* {offlinePeople.map((user) => (
 						<li className='border-b px-4 py-2 flex items-center gap-2' key={user.id}>
 							<Avatar initialString={user.username[0]} id={user.id} online={false} />
 							<span>{user.username}</span>
 						</li>
-					))}
+					))} */}
 				</ul>
 
 				<Footer username={user?.username || ""} />

@@ -4,12 +4,12 @@ import { WebSocketServer, type WebSocket } from 'ws';
 import { mysqlConn } from './connection/mysql';
 import { usersRouter } from './routes/users';
 import { Messages } from './models/messages';
+import { Users } from './models/users';
 import cookie from 'cookie-parser';
+import { Op } from 'sequelize';
 import express from 'express';
 import log from 'morgan';
 import cors from 'cors';
-import { Op } from 'sequelize';
-import { Users } from './models/users';
 
 const app = express();
 
@@ -22,8 +22,8 @@ app.use(cors({
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookie());
 app.use(log('dev'));
+app.use(cookie());
 
 app.get('/', (req, res) => {
   res.send('Hello World!');
@@ -31,7 +31,7 @@ app.get('/', (req, res) => {
 
 app.use('/api/v1', usersRouter);
 
-app.get('/api/v1/messages/:id', async(req, res) => {
+app.get('/api/v1/messages/:id', async (req, res) => {
   const { id } = req.params;
   const user = await verifyToken(req.cookies.token);
 
@@ -53,7 +53,7 @@ app.get('/api/v1/messages/:id', async(req, res) => {
   res.json(messages);
 });
 
-app.get('/api/v1/people', async(req, res) => {
+app.get('/api/v1/people', async (req, res) => {
   const user = await verifyToken(req.cookies.token);
 
   if (!user) {
@@ -75,7 +75,7 @@ app.get('/api/v1/people', async(req, res) => {
   res.json(usersOffline);
 })
 
-app.listen(PORT, () => {
+const serverUp = app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
 
@@ -85,8 +85,6 @@ mysqlConn.authenticate().then(() => {
   console.log(err);
 })
 
-const server = app.listen(3010);
-
 interface SocketClient extends WebSocket {
   id?: string;
   username?: string;
@@ -95,7 +93,7 @@ interface SocketClient extends WebSocket {
   deathTimer?: NodeJS.Timeout;
 }
 
-const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({ server: serverUp });
 
 interface User {
   id: string;
@@ -112,32 +110,6 @@ interface Message {
 const connectedUsers: Map<string, User> = new Map();
 
 wss.on('connection', async (conn: SocketClient, req) => {
-  function notifyAboutOnlineUsers() {
-    [...wss.clients].forEach((client) => {
-      client.send(JSON.stringify({
-        onlineUsers: [...connectedUsers.values()]
-      }))
-    })
-  }
-  conn.isAlive = true;
-
-  conn.timer = setInterval(() => {
-    conn.ping();
-    conn.deathTimer = setTimeout(() => {
-      if (conn.id) {
-        connectedUsers.delete(conn.id);
-      }
-      conn.isAlive = false;
-      conn.terminate();
-      notifyAboutOnlineUsers();
-      console.log('User is dead');
-    }, 1000)
-  }, 5000);
-
-  conn.on('pong', () => {
-    clearTimeout(conn.deathTimer);
-  })
-
   const cookie = req.headers.cookie?.split(';').find((cookie) => cookie.startsWith('token='));
 
   if (!cookie) {
@@ -161,35 +133,19 @@ wss.on('connection', async (conn: SocketClient, req) => {
     console.log(err);
   }
 
-  conn.on('message', async(data) => {
-    const msgData: Message = JSON.parse(data.toString());
-    if (msgData.type === 'message' && conn.id) {
-      // save message on db
-      await Messages.sync();
-      await Messages.create({
-        content: msgData.content,
-        from: conn.id,
-        to: msgData.to
-      });
-
-      [...wss.clients]
-      .filter((c: SocketClient) => c.id === msgData.to )
-      .forEach((c: SocketClient) => c.send(JSON.stringify({
-        messages: {
-          type: 'message',
-          content: msgData.content,
-          from: conn.id,
-          to: msgData.to
-        }
-      })))
-    }
+  conn.on('message', async (data) => {
+    console.log(JSON.parse(data.toString()));
   });
 
-  notifyAboutOnlineUsers();
-});
+  conn.on('message', (data, isBinary) => {
+    console.log(data, isBinary);
+    console.log(JSON.parse(data.toString()));
+  });
 
-wss.on('close', (conn: SocketClient) => {
-  if (conn.id) {
-    connectedUsers.delete(conn.id);
-  }
-})
+  [...wss.clients].forEach((client) => {
+    client.send(JSON.stringify({
+      type: 'onlineUsers',
+      onlineUsers: [...connectedUsers.values()]
+    }))
+  })
+});
