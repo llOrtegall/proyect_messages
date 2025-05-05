@@ -1,6 +1,7 @@
 import { ArrowLeftFromLine, MessageSquare } from 'lucide-react'
 import { FormSendMessage } from '@/components/form-sendMessage'
 import { FormEvent, useEffect, useRef, useState } from 'react'
+import { useWebSocket } from '@/hooks/useWebSokect'
 import { Avatar } from '@/components/ui/avatar'
 import { useAuth } from '@/auth/AuthProvider'
 import { Footer } from '@/components/footer'
@@ -9,7 +10,6 @@ import axios from 'axios'
 const WS_URL = import.meta.env.VITE_WS_URL
 
 interface Message {
-	type: string
 	content: string
 	from: string
 	to: string
@@ -22,50 +22,30 @@ interface UserChat {
 
 interface MessageData {
 	type: string
-	onlineUsers?: UserChat[]
-	newMessage?: Message
+	data?: UserChat[] | Message
 }
 
 export default function ChatApp() {
-	const [ws, setWs] = useState<WebSocket | null>(null)
 	const [onlinePeople, setOnlinePeople] = useState<UserChat[]>([])
 	// const [offlinePeople, setOfflinePeople] = useState<UserChat[]>([])
 	const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
 	const [messages, setMessages] = useState<Message[]>([])
-
+	
 	const { user } = useAuth()
-
+	
 	const messagesEndRef = useRef<HTMLDivElement>(null)
-
+	
 	const handleMessage = (e: MessageEvent) => {
 		const messageData: MessageData = JSON.parse(e.data)
-
+		
 		// show online users and remove me
-		if (messageData.type === 'onlineUsers' && messageData.onlineUsers) {
-			const removeMe = messageData.onlineUsers.filter(u => user?.id !== u.id)
+		if (messageData.type === 'onlineUsers' && messageData.data instanceof Array) {
+			const removeMe = messageData.data.filter((u: UserChat) => user?.id !== u.id)
 			setOnlinePeople(removeMe)
 		}
 	}
-
-	const connetToWs = () => {
-		const ws = new WebSocket(WS_URL)
-		setWs(ws)
-
-		ws.addEventListener('message', handleMessage);
-
-		ws.addEventListener('close', () => {
-			console.log('Connection closed');
-			setTimeout(() => {
-				console.log('Try... Reconnecting...');
-				connetToWs()
-			}, 10000)
-		})
-	}
-
-	// TODO: this is a ws connection, initialize it
-	useEffect(() => {
-		connetToWs()
-	}, [])
+	
+	const ws = useWebSocket(WS_URL, handleMessage)
 
 	useEffect(() => {
 		const div = messagesEndRef.current
@@ -106,14 +86,15 @@ export default function ChatApp() {
 
 		if (ws && selectedContactId && user?.id && newMessage) {
 			ws.send(JSON.stringify({
-				type: 'message',
-				content: newMessage,
-				to: selectedContactId,
-				from: user.id
+				type: 'newMessage',
+				data: {
+					content: newMessage,
+					to: selectedContactId,
+					from: user.id
+				}
 			}));
 
 			setMessages(prev => [...prev, {
-				type: 'message',
 				content: newMessage,
 				to: selectedContactId,
 				from: user.id

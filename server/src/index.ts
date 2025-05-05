@@ -138,14 +138,16 @@ wss.on('connection', async (conn: SocketClient, req) => {
   });
 
   conn.on('message', (data, isBinary) => {
-    console.log(data, isBinary);
-    console.log(JSON.parse(data.toString()));
+    const msgData = JSON.parse(data.toString())
+    if (msgData.newMessage) {
+      const { content, to, from } = msgData.newMessage
+    }
   });
 
   [...wss.clients].forEach((client) => {
     client.send(JSON.stringify({
       type: 'onlineUsers',
-      onlineUsers: [...connectedUsers.values()]
+      data: [...connectedUsers.values()]
     }))
   })
 });
