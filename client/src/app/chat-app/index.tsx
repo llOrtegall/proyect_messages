@@ -75,30 +75,6 @@ export default function ChatApp() {
 		}
 	}, [messages])
 
-	/*
-	useEffect(() => {
-		if (selectedContactId) {
-			axios.get(`/messages/${selectedContactId}`)
-				.then((response) => {
-					setMessages(response.data)
-				})
-				.catch((error) => {
-					console.error(error)
-				})
-		}
-	}, [selectedContactId])
-
-	useEffect(() => {
-		axios.get('/people')
-			.then((response) => {
-				setOfflinePeople(response.data)
-			})
-			.catch((error) => {
-				console.error(error)
-			})
-		}, [onlinePeople])
-	*/
-
 	const sendMessage = (e: FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 
@@ -181,7 +157,7 @@ export default function ChatApp() {
 						selectedContactId ? (
 							<section className='relative h-full'>
 								<ul className='overflow-y-auto absolute top-10 right-2 left-2 bottom-4 space-y-2'>
-									{messages.map((message, index) => (
+									{messages.filter((message) => message.from === selectedContactId || message.to === selectedContactId).map((message, index) => (
 										<li
 											key={index}
 											className={`p-2 rounded-md max-w-[80%] ${message.from === user?.id
