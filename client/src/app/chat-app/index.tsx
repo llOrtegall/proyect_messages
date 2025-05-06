@@ -5,7 +5,6 @@ import { useWebSocket } from '@/hooks/useWebSokect'
 import { Avatar } from '@/components/ui/avatar'
 import { useAuth } from '@/auth/AuthProvider'
 import { Footer } from '@/components/footer'
-import axios from 'axios'
 
 const WS_URL = import.meta.env.VITE_WS_URL
 
@@ -30,26 +29,43 @@ export default function ChatApp() {
 	// const [offlinePeople, setOfflinePeople] = useState<UserChat[]>([])
 	const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
 	const [messages, setMessages] = useState<Message[]>([])
-	
+	const [notification, setNotification] = useState<{ from: string, count: number }[]>([])
+
 	const { user } = useAuth()
-	
+
 	const messagesEndRef = useRef<HTMLDivElement>(null)
-	
+
 	const handleMessage = (e: MessageEvent) => {
 		const messageData: MessageData = JSON.parse(e.data)
-		
+
 		// show online users and remove me
 		if (messageData.type === 'onlineUsers' && messageData.data instanceof Array) {
 			const removeMe = messageData.data.filter((u: UserChat) => user?.id !== u.id)
 			setOnlinePeople(removeMe)
-		} 
+		}
 
-		if(messageData.type === 'newMessage' && messageData.data instanceof Object){
+		if (messageData.type === 'newMessage' && messageData.data instanceof Object) {
 			const newMessage = messageData.data as Message
 			setMessages(prev => [...prev, newMessage])
+			console.log(messageData.data);
+
+			// if exist update count else add
+			setNotification(prev => {
+				const index = prev.findIndex((n) => n.from === newMessage.from)
+				if (index !== -1) {
+					prev[index].count++
+					return [...prev]
+				}
+				return [...prev, { from: newMessage.from, count: 1 }]
+			})
 		}
 	}
-	
+
+	const handleSelectContact = (id: string) => {
+		setSelectedContactId(id)
+		setNotification(prev => prev.filter((n) => n.from !== id))
+	}
+
 	const ws = useWebSocket(WS_URL, handleMessage)
 
 	useEffect(() => {
@@ -58,30 +74,6 @@ export default function ChatApp() {
 			div.scrollIntoView({ behavior: 'smooth', block: 'end' })
 		}
 	}, [messages])
-
-	/*
-	useEffect(() => {
-		if (selectedContactId) {
-			axios.get(`/messages/${selectedContactId}`)
-				.then((response) => {
-					setMessages(response.data)
-				})
-				.catch((error) => {
-					console.error(error)
-				})
-		}
-	}, [selectedContactId])
-
-	useEffect(() => {
-		axios.get('/people')
-			.then((response) => {
-				setOfflinePeople(response.data)
-			})
-			.catch((error) => {
-				console.error(error)
-			})
-		}, [onlinePeople])
-	*/
 
 	const sendMessage = (e: FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
@@ -108,6 +100,19 @@ export default function ChatApp() {
 		e.currentTarget.reset()
 	}
 
+	const handlePressEsc = (e: KeyboardEvent) => {
+		if (e.key === 'Escape') {
+			setSelectedContactId(null)
+		}
+	}
+
+	useEffect(() => {
+		document.addEventListener('keydown', handlePressEsc)
+		return () => {
+			document.removeEventListener('keydown', handlePressEsc)
+		}
+	}, [])
+
 	return (
 		<section className='h-screen flex'>
 
@@ -120,7 +125,7 @@ export default function ChatApp() {
 				<ul className='gap-2 py-2 h-[calc(80vh-50px)] overflow-y-auto'>
 					{onlinePeople.map((user) => (
 						<li
-							onClick={() => setSelectedContactId(user.id)}
+							onClick={() => handleSelectContact(user.id)}
 							className={`border-b px-4 py-2 flex items-center gap-2 cursor-pointer hover:bg-slate-200 rounded-md 
 							${selectedContactId === user.id ? 'bg-blue-200' : ''}`} key={user.id}>
 							{
@@ -130,14 +135,16 @@ export default function ChatApp() {
 							}
 							<Avatar initialString={user.username[0]} id={user.id} online={true} />
 							<span>{user.username}</span>
+
+							{notification.find((n) => n.from === user.id)?.count && (
+								<span className='bg-green-500 border shadow-md borderbg-gray-700 text-white rounded-full size-6 flex items-center justify-center'>
+									{notification.find((n) => n.from === user.id)?.count}
+								</span>
+							)}
+
 						</li>
 					))}
-					{/* {offlinePeople.map((user) => (
-						<li className='border-b px-4 py-2 flex items-center gap-2' key={user.id}>
-							<Avatar initialString={user.username[0]} id={user.id} online={false} />
-							<span>{user.username}</span>
-						</li>
-					))} */}
+
 				</ul>
 
 				<Footer username={user?.username || ""} />
@@ -150,7 +157,7 @@ export default function ChatApp() {
 						selectedContactId ? (
 							<section className='relative h-full'>
 								<ul className='overflow-y-auto absolute top-10 right-2 left-2 bottom-4 space-y-2'>
-									{messages.map((message, index) => (
+									{messages.filter((message) => message.from === selectedContactId || message.to === selectedContactId).map((message, index) => (
 										<li
 											key={index}
 											className={`p-2 rounded-md max-w-[80%] ${message.from === user?.id
