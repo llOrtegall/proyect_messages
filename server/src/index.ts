@@ -98,6 +98,25 @@ const wss = new WebSocketServer({ server: serverUp });
 
 wss.on('connection', async (conn: SocketClient, req) => {
 
+  conn.isAlive = true;
+
+  conn.timer = setInterval(() => {
+    conn.ping();
+    conn.deathTimer = setTimeout(() => {
+      conn.isAlive = false;
+      conn.terminate();
+      NotifyOnlineUsers()
+      clearInterval(conn.timer)
+      clearTimeout(conn.deathTimer)
+      console.log('death');
+    }, 1000)
+  }, 10000)
+
+  conn.on('pong', () => {
+    console.log('pong');
+    clearTimeout(conn.deathTimer)
+  })
+
   const NotifyOnlineUsers = () => [...wss.clients].forEach((client) => {
     client.send(JSON.stringify({
       type: 'onlineUsers',
@@ -146,10 +165,6 @@ wss.on('connection', async (conn: SocketClient, req) => {
     }
   });
 
-  conn.on('close', () => {
-    console.log('User disconnected');
-    NotifyOnlineUsers()
-  })
-
   NotifyOnlineUsers()
 });
+

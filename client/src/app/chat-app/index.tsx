@@ -130,7 +130,7 @@ export default function ChatApp() {
 			<section className='w-3/12 bg-slate-100 p-2 h-screen'>
 				<header className='flex items-center gap-2 text-blue-700 font-bold justify-center pt-2 pb-3 border-b-2 border-slate-200'>
 					<MessageSquare />
-					<h1>Chat App Ortega</h1>
+					<h1>Chat App</h1>
 				</header>
 
 				<ul className='gap-2 py-2 h-[calc(80vh-50px)] overflow-y-auto'>
