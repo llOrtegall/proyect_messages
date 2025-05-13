@@ -69,11 +69,7 @@ app.get('/api/v1/people', async (req, res) => {
     }
   })
 
-  const onlineUsers = [...connectedUsers.values()];
-
-  const usersOffline = users.filter((user) => !onlineUsers.some((u) => u.id === user.id));
-
-  res.json(usersOffline);
+  res.json(users);
 })
 
 const serverUp = app.listen(PORT, () => {
@@ -88,8 +84,6 @@ mysqlConn.authenticate().then(() => {
 
 const wss = new WebSocketServer({ server: serverUp });
 
-const connectedUsers: Map<string, User> = new Map();
-
 wss.on('connection', async (conn: SocketClient, req) => {
   const cookie = req.headers.cookie?.split(';').find((cookie) => cookie.startsWith('token='));
 
@@ -103,9 +97,6 @@ wss.on('connection', async (conn: SocketClient, req) => {
   try {
     const decoded = await verifyToken(token);
     if (decoded) {
-      if (!connectedUsers.has(decoded.id)) {
-        connectedUsers.set(decoded.id, { id: decoded.id, username: decoded.username });
-      }
       conn.id = decoded.id;
       conn.username = decoded.username;
     }
@@ -134,7 +125,7 @@ wss.on('connection', async (conn: SocketClient, req) => {
   [...wss.clients].forEach((client) => {
     client.send(JSON.stringify({
       type: 'onlineUsers',
-      data: [...connectedUsers.values()]
+      data: [...wss.clients].map((c: SocketClient) => ({ id: c.id, username: c.username }))
     }))
   })
 });

@@ -133,12 +133,12 @@ export default function ChatApp() {
 									<div className='w-1 h-8 rounded-md bg-blue-500'></div>
 								)
 							}
-							<Avatar initialString={user.username[0]} id={user.id} online={true} />
-							<span>{user.username}</span>
+							<Avatar initialString={user?.username[0] ?? 'U'} id={user?.id ?? ''} online={true} />
+							<span>{user?.username}</span>
 
-							{notification.find((n) => n.from === user.id)?.count && (
+							{notification.find((n) => n.from === user?.id)?.count && (
 								<span className='bg-green-500 border shadow-md borderbg-gray-700 text-white rounded-full size-6 flex items-center justify-center'>
-									{notification.find((n) => n.from === user.id)?.count}
+									{notification.find((n) => n.from === user?.id)?.count}
 								</span>
 							)}
 
