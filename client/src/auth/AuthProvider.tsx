@@ -1,6 +1,6 @@
-import { IAuthContext, User } from '@/types/interfaces'
-import axios from 'axios'
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react';
+import { IAuthContext, User } from '@/types/interfaces';
+import axios from 'axios';
 
 const AuthContext = createContext<IAuthContext | undefined>(undefined)
 

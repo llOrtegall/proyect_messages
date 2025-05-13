@@ -79,6 +79,11 @@ app.get('/api/v1/people', async (req, res) => {
   res.json(users);
 })
 
+app.get('/api/v1/logout', async (req, res) => {
+  res.clearCookie('token');
+  res.json({ message: 'Logout successful' });
+})
+
 const serverUp = app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
@@ -92,6 +97,14 @@ mysqlConn.authenticate().then(() => {
 const wss = new WebSocketServer({ server: serverUp });
 
 wss.on('connection', async (conn: SocketClient, req) => {
+
+  const NotifyOnlineUsers = () => [...wss.clients].forEach((client) => {
+    client.send(JSON.stringify({
+      type: 'onlineUsers',
+      data: [...wss.clients].map((c: SocketClient) => ({ id: c.id, username: c.username }))
+    }))
+  })
+
   const cookie = req.headers.cookie?.split(';').find((cookie) => cookie.startsWith('token='));
 
   if (!cookie) {
@@ -133,10 +146,10 @@ wss.on('connection', async (conn: SocketClient, req) => {
     }
   });
 
-  [...wss.clients].forEach((client) => {
-    client.send(JSON.stringify({
-      type: 'onlineUsers',
-      data: [...wss.clients].map((c: SocketClient) => ({ id: c.id, username: c.username }))
-    }))
+  conn.on('close', () => {
+    console.log('User disconnected');
+    NotifyOnlineUsers()
   })
+
+  NotifyOnlineUsers()
 });

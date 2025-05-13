@@ -1,4 +1,4 @@
-import { Button } from "./ui/button"
+import { ButtonLogOut } from "./ButtonLogOut"
 
 export const Footer = ({ username }: { username: string }) => {
 	return (
@@ -6,8 +6,7 @@ export const Footer = ({ username }: { username: string }) => {
 			<article>
 				<h2>Welcome: <span className='font-bold'>{username}</span></h2>
 			</article>
-			<Button>Logout</Button>
-
+			<ButtonLogOut />
 		</footer>
 	)
 }

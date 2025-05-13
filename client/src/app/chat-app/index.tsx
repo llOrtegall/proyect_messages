@@ -121,8 +121,8 @@ export default function ChatApp() {
 					setMessages(res.data)
 				})
 				.catch(err => console.log(err))
-			}
-		}, [selectedContactId])
+		}
+	}, [selectedContactId])
 
 	return (
 		<section className='h-screen flex'>

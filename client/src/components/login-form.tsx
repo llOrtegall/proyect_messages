@@ -1,12 +1,12 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { useAuth } from "@/auth/AuthProvider"
-import { FormEvent, useState } from "react"
-import { cn } from "@/lib/utils"
-import axios from "axios"
-import { User } from "@/types/interfaces"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "@/auth/AuthProvider";
+import { FormEvent, useState } from "react";
+import { User } from "@/types/interfaces";
+import { cn } from "@/lib/utils";
+import axios from "axios";
 
 export function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
   const [username, setUsername] = useState("")
