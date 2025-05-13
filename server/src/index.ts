@@ -1,4 +1,4 @@
-import { User, Message, DataWs, SocketClient } from './types/interfaces';
+import { File, DataWs, SocketClient, Message } from './types/interfaces';
 import { verifyToken } from './services/tokenVerifyToken';
 import { PORT, CLIENT_URL } from './schemas/envSchema';
 import { mysqlConn } from './connection/mysql';
@@ -10,6 +10,7 @@ import cookie from 'cookie-parser';
 import { Op } from 'sequelize';
 import express from 'express';
 import log from 'morgan';
+import fs from 'node:fs';
 import cors from 'cors';
 
 const app = express();
@@ -31,6 +32,8 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/v1', usersRouter);
+
+app.use('/uploads', express.static(__dirname + '/uploads'));
 
 app.get('/api/v1/messages', async (req, res) => {
   const params = req.query;
@@ -108,12 +111,10 @@ wss.on('connection', async (conn: SocketClient, req) => {
       NotifyOnlineUsers()
       clearInterval(conn.timer)
       clearTimeout(conn.deathTimer)
-      console.log('death');
     }, 1000)
   }, 10000)
 
   conn.on('pong', () => {
-    console.log('pong');
     clearTimeout(conn.deathTimer)
   })
 
@@ -146,22 +147,35 @@ wss.on('connection', async (conn: SocketClient, req) => {
   conn.on('message', async (data) => {
     const msgData: DataWs = JSON.parse(data.toString());
     if (msgData.type === 'newMessage' && msgData.data instanceof Object) {
+      const message = msgData.data as Message;
 
       await Messages.sync();
       await Messages.create({
-        content: msgData.data.content,
-        from: msgData.data.from,
-        to: msgData.data.to
+        content: message.content,
+        from: message.from,
+        to: message.to
       });
 
       [...wss.clients].forEach((c: SocketClient) => {
-        if(c.id === msgData.data.to){
+        if(c.id === message.to){
           c.send(JSON.stringify({
             type: 'newMessage',
             data: msgData.data
           }))
         }
       })
+    } else if (msgData.type === 'newFile' && msgData.data instanceof Object) {
+      const { name, type, size, content } = msgData.data as File;
+
+      const parts = name.split('.');
+      const extension = parts[parts.length - 1];
+      const fileName = Date.now() + '.' + extension;
+      const path = __dirname + '/uploads/' + fileName;
+      const bufferData = Buffer.from(content, 'base64');
+
+      fs.writeFile(path, bufferData, () => {
+        console.log('File saved' + path);
+      });
     }
   });
 

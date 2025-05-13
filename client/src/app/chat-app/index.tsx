@@ -107,6 +107,30 @@ export default function ChatApp() {
 		}
 	}
 
+	const handleSendFile = (e: FormEvent<HTMLInputElement>) => {
+		e.preventDefault()
+		const file = e.currentTarget.files?.[0];
+
+		if (!file) return
+
+		const reader = new FileReader()
+		reader.readAsDataURL(file)
+		reader.onload = () => {
+			ws?.send(JSON.stringify({
+				type: 'newFile',
+				data: {
+					name: file.name,
+					type: file.type,
+					size: file.size,
+					content: reader.result,
+					to: selectedContactId,
+					from: user?.id
+				}
+			}));
+		}
+
+	}
+
 	useEffect(() => {
 		document.addEventListener('keydown', handlePressEsc)
 		return () => {
@@ -193,7 +217,7 @@ export default function ChatApp() {
 
 				{
 					!!selectedContactId && (
-						<FormSendMessage onSubmit={sendMessage} />
+						<FormSendMessage onSubmit={sendMessage} onSendFile={handleSendFile}/>
 					)
 				}
 			</main>

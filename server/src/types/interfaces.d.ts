@@ -11,9 +11,16 @@ export interface Message {
   to: string;
 }
 
+export interface File {
+  name: string;
+  type: string;
+  size: number;
+  content: string;
+}
+
 export interface DataWs {
   type: string
-  data: Message
+  data: Message | File
 }
 
 export interface SocketClient extends WebSocket {
