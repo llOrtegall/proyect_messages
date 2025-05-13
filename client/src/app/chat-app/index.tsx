@@ -1,10 +1,11 @@
-import { ArrowLeftFromLine, MessageSquare } from 'lucide-react'
-import { FormSendMessage } from '@/components/form-sendMessage'
-import { FormEvent, useEffect, useRef, useState } from 'react'
-import { useWebSocket } from '@/hooks/useWebSokect'
-import { Avatar } from '@/components/ui/avatar'
-import { useAuth } from '@/auth/AuthProvider'
-import { Footer } from '@/components/footer'
+import { ArrowLeftFromLine, MessageSquare } from 'lucide-react';
+import { FormSendMessage } from '@/components/form-sendMessage';
+import { FormEvent, useEffect, useRef, useState } from 'react';
+import { useWebSocket } from '@/hooks/useWebSokect';
+import { Avatar } from '@/components/ui/avatar';
+import { useAuth } from '@/auth/AuthProvider';
+import { Footer } from '@/components/footer';
+import axios from 'axios';
 
 const WS_URL = import.meta.env.VITE_WS_URL
 
@@ -112,6 +113,16 @@ export default function ChatApp() {
 			document.removeEventListener('keydown', handlePressEsc)
 		}
 	}, [])
+
+	useEffect(() => {
+		if (selectedContactId) {
+			axios.get('/messages', { params: { id: selectedContactId } })
+				.then(res => {
+					setMessages(res.data)
+				})
+				.catch(err => console.log(err))
+			}
+		}, [selectedContactId])
 
 	return (
 		<section className='h-screen flex'>

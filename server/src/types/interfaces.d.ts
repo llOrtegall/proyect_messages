@@ -6,7 +6,7 @@ export interface User {
 }
 
 export interface Message {
-  type: string;
+  from: string;
   content: string;
   to: string;
 }

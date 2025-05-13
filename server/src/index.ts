@@ -32,8 +32,15 @@ app.get('/', (req, res) => {
 
 app.use('/api/v1', usersRouter);
 
-app.get('/api/v1/messages/:id', async (req, res) => {
-  const { id } = req.params;
+app.get('/api/v1/messages', async (req, res) => {
+  const params = req.query;
+
+  // validate is objen and exist id on type string
+  if (typeof params.id !== 'string') {
+    res.status(400).json({ message: 'Invalid id' });
+    return;
+  }
+
   const user = await verifyToken(req.cookies.token);
 
   if (!user) {
@@ -44,14 +51,14 @@ app.get('/api/v1/messages/:id', async (req, res) => {
   const messages = await Messages.findAll({
     where: {
       [Op.or]: [
-        { from: user.id, to: id },
-        { from: id, to: user.id }
+        { from: user.id, to: params.id },
+        { from: params.id, to: user.id }
       ]
     },
     order: [['createdAt', 'ASC']]
   });
 
-  res.json(messages);
+  res.status(200).json(messages);
 });
 
 app.get('/api/v1/people', async (req, res) => {
@@ -105,12 +112,16 @@ wss.on('connection', async (conn: SocketClient, req) => {
   }
 
   conn.on('message', async (data) => {
-    console.log(JSON.parse(data.toString()));
-  });
-
-  conn.on('message', (data, isBinary) => {
-    const msgData: DataWs = JSON.parse(data.toString())
+    const msgData: DataWs = JSON.parse(data.toString());
     if (msgData.type === 'newMessage' && msgData.data instanceof Object) {
+
+      await Messages.sync();
+      await Messages.create({
+        content: msgData.data.content,
+        from: msgData.data.from,
+        to: msgData.data.to
+      });
+
       [...wss.clients].forEach((c: SocketClient) => {
         if(c.id === msgData.data.to){
           c.send(JSON.stringify({
