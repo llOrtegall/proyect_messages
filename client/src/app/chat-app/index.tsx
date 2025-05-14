@@ -1,10 +1,12 @@
-import { ArrowLeftFromLine, MessageSquare } from 'lucide-react'
-import { FormSendMessage } from '@/components/form-sendMessage'
-import { FormEvent, useEffect, useRef, useState } from 'react'
-import { useWebSocket } from '@/hooks/useWebSokect'
-import { Avatar } from '@/components/ui/avatar'
-import { useAuth } from '@/auth/AuthProvider'
-import { Footer } from '@/components/footer'
+import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from 'react';
+import { ArrowLeftFromLine, File, MessageSquare } from 'lucide-react';
+import { FormSendMessage } from '@/components/form-sendMessage';
+import { useWebSocket } from '@/hooks/useWebSokect';
+import { Avatar } from '@/components/ui/avatar';
+import { useAuth } from '@/auth/AuthProvider';
+import { Footer } from '@/components/footer';
+import axios from 'axios';
+import { Message } from '@/components/Message';
 
 const WS_URL = import.meta.env.VITE_WS_URL
 
@@ -12,6 +14,7 @@ interface Message {
 	content: string
 	from: string
 	to: string
+	file?: boolean
 }
 
 interface UserChat {
@@ -19,9 +22,19 @@ interface UserChat {
 	username: string
 }
 
+interface File {
+	name: string
+	from: string
+	to: string
+	info: {
+		type: string
+		size: number
+	}
+}
+
 interface MessageData {
 	type: string
-	data?: UserChat[] | Message
+	data?: UserChat[] | Message | File
 }
 
 export default function ChatApp() {
@@ -47,9 +60,7 @@ export default function ChatApp() {
 		if (messageData.type === 'newMessage' && messageData.data instanceof Object) {
 			const newMessage = messageData.data as Message
 			setMessages(prev => [...prev, newMessage])
-			console.log(messageData.data);
 
-			// if exist update count else add
 			setNotification(prev => {
 				const index = prev.findIndex((n) => n.from === newMessage.from)
 				if (index !== -1) {
@@ -58,6 +69,16 @@ export default function ChatApp() {
 				}
 				return [...prev, { from: newMessage.from, count: 1 }]
 			})
+		}
+
+		if (messageData.type === 'newFile' && messageData.data instanceof Object) {
+			const newFile = messageData.data as File
+			setMessages(prev => [...prev, {
+				from: newFile.from,
+				to: newFile.to,
+				content: newFile.name,
+				file: true
+			}])
 		}
 	}
 
@@ -106,6 +127,40 @@ export default function ChatApp() {
 		}
 	}
 
+	const handleSendFile = (e: ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0];
+
+		if (!file) return
+
+		const reader = new FileReader()
+		reader.readAsDataURL(file)
+		reader.onload = () => {
+			ws?.send(JSON.stringify({
+				type: 'newFile',
+				data: {
+					name: file.name,
+					content: reader.result,
+					to: selectedContactId,
+					from: user?.id,
+					info: {
+						type: file.type,
+						size: file.size
+					}
+				}
+			}));
+		}
+
+		// reset input file
+		e.target.value = '';
+
+		setMessages(prev => [...prev, {
+			from: user?.id ?? '',
+			to: selectedContactId ?? '',
+			content: file.name,
+			file: true
+		}])
+	}
+
 	useEffect(() => {
 		document.addEventListener('keydown', handlePressEsc)
 		return () => {
@@ -113,13 +168,23 @@ export default function ChatApp() {
 		}
 	}, [])
 
+	useEffect(() => {
+		if (selectedContactId) {
+			axios.get('/messages', { params: { id: selectedContactId } })
+				.then(res => {
+					setMessages(res.data)
+				})
+				.catch(err => console.log(err))
+		}
+	}, [selectedContactId])
+
 	return (
 		<section className='h-screen flex'>
 
 			<section className='w-3/12 bg-slate-100 p-2 h-screen'>
 				<header className='flex items-center gap-2 text-blue-700 font-bold justify-center pt-2 pb-3 border-b-2 border-slate-200'>
 					<MessageSquare />
-					<h1>Chat App Ortega</h1>
+					<h1>Chat App</h1>
 				</header>
 
 				<ul className='gap-2 py-2 h-[calc(80vh-50px)] overflow-y-auto'>
@@ -156,17 +221,14 @@ export default function ChatApp() {
 					{
 						selectedContactId ? (
 							<section className='relative h-full'>
-								<ul className='overflow-y-auto absolute top-10 right-2 left-2 bottom-4 space-y-2'>
+								<ul className='overflow-y-auto absolute top-10 right-2 left-2 bottom-4 space-y-4'>
 									{messages.filter((message) => message.from === selectedContactId || message.to === selectedContactId).map((message, index) => (
-										<li
+										<Message
 											key={index}
-											className={`p-2 rounded-md max-w-[80%] ${message.from === user?.id
-												? 'ml-auto bg-blue-700 text-white'
-												: 'mr-auto bg-blue-200 text-black'
-												}`}
-										>
-											{message.content}
-										</li>
+											content={message.content}
+											isFile={message.file ?? false}
+											isOwnMessage={message.from === user?.id}
+										/>
 									))}
 									<div ref={messagesEndRef}></div>
 								</ul>
@@ -182,7 +244,7 @@ export default function ChatApp() {
 
 				{
 					!!selectedContactId && (
-						<FormSendMessage onSubmit={sendMessage} />
+						<FormSendMessage onSubmit={sendMessage} onSendFile={handleSendFile} />
 					)
 				}
 			</main>

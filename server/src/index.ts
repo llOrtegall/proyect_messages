@@ -1,4 +1,4 @@
-import { User, Message, DataWs, SocketClient } from './types/interfaces';
+import { File, DataWs, SocketClient, Message } from './types/interfaces';
 import { verifyToken } from './services/tokenVerifyToken';
 import { PORT, CLIENT_URL } from './schemas/envSchema';
 import { mysqlConn } from './connection/mysql';
@@ -10,6 +10,7 @@ import cookie from 'cookie-parser';
 import { Op } from 'sequelize';
 import express from 'express';
 import log from 'morgan';
+import fs from 'node:fs';
 import cors from 'cors';
 
 const app = express();
@@ -32,8 +33,17 @@ app.get('/', (req, res) => {
 
 app.use('/api/v1', usersRouter);
 
-app.get('/api/v1/messages/:id', async (req, res) => {
-  const { id } = req.params;
+app.use('/api/v1/uploads', express.static(__dirname + '/uploads/'));
+
+app.get('/api/v1/messages', async (req, res) => {
+  const params = req.query;
+
+  // validate is objen and exist id on type string
+  if (typeof params.id !== 'string') {
+    res.status(400).json({ message: 'Invalid id' });
+    return;
+  }
+
   const user = await verifyToken(req.cookies.token);
 
   if (!user) {
@@ -44,14 +54,14 @@ app.get('/api/v1/messages/:id', async (req, res) => {
   const messages = await Messages.findAll({
     where: {
       [Op.or]: [
-        { from: user.id, to: id },
-        { from: id, to: user.id }
+        { from: user.id, to: params.id },
+        { from: params.id, to: user.id }
       ]
     },
     order: [['createdAt', 'ASC']]
   });
 
-  res.json(messages);
+  res.status(200).json(messages);
 });
 
 app.get('/api/v1/people', async (req, res) => {
@@ -72,6 +82,11 @@ app.get('/api/v1/people', async (req, res) => {
   res.json(users);
 })
 
+app.get('/api/v1/logout', async (req, res) => {
+  res.clearCookie('token');
+  res.json({ message: 'Logout successful' });
+})
+
 const serverUp = app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
@@ -85,6 +100,31 @@ mysqlConn.authenticate().then(() => {
 const wss = new WebSocketServer({ server: serverUp });
 
 wss.on('connection', async (conn: SocketClient, req) => {
+
+  conn.isAlive = true;
+
+  conn.timer = setInterval(() => {
+    conn.ping();
+    conn.deathTimer = setTimeout(() => {
+      conn.isAlive = false;
+      conn.terminate();
+      NotifyOnlineUsers()
+      clearInterval(conn.timer)
+      clearTimeout(conn.deathTimer)
+    }, 1000)
+  }, 10000)
+
+  conn.on('pong', () => {
+    clearTimeout(conn.deathTimer)
+  })
+
+  const NotifyOnlineUsers = () => [...wss.clients].forEach((client) => {
+    client.send(JSON.stringify({
+      type: 'onlineUsers',
+      data: [...wss.clients].map((c: SocketClient) => ({ id: c.id, username: c.username }))
+    }))
+  })
+
   const cookie = req.headers.cookie?.split(';').find((cookie) => cookie.startsWith('token='));
 
   if (!cookie) {
@@ -105,27 +145,61 @@ wss.on('connection', async (conn: SocketClient, req) => {
   }
 
   conn.on('message', async (data) => {
-    console.log(JSON.parse(data.toString()));
-  });
-
-  conn.on('message', (data, isBinary) => {
-    const msgData: DataWs = JSON.parse(data.toString())
+    const msgData: DataWs = JSON.parse(data.toString());
     if (msgData.type === 'newMessage' && msgData.data instanceof Object) {
+      const message = msgData.data as Message;
+
+      await Messages.sync();
+      await Messages.create({
+        content: message.content,
+        from: message.from,
+        to: message.to
+      });
+
       [...wss.clients].forEach((c: SocketClient) => {
-        if(c.id === msgData.data.to){
+        if (c.id === message.to) {
           c.send(JSON.stringify({
             type: 'newMessage',
             data: msgData.data
           }))
         }
       })
+    } else if (msgData.type === 'newFile' && msgData.data instanceof Object) {
+      const { name, content, to, from, info } = msgData.data as File;
+
+      const parts = name.split('.');
+      const extension = parts[parts.length - 1];
+      const fileName = Date.now() + '.' + extension;
+
+      const path = __dirname + '/uploads/' + fileName;
+      const bufferData = Buffer.from(content.split('base64,')[1], 'base64');
+
+      fs.writeFile(path, bufferData, async () => {
+        // Save Message 
+        await Messages.sync();
+        await Messages.create({ content: fileName, from, to, file: true });
+
+        [...wss.clients].forEach((c: SocketClient) => {
+          if (c.id === to) {
+            c.send(JSON.stringify({
+              type: 'newFile',
+              data: {
+                name: fileName,
+                content: path,
+                to,
+                from,
+                info: {
+                  type: info.type,
+                  size: info.size,
+                }
+              }
+            }))
+          }
+        })
+      });
     }
   });
 
-  [...wss.clients].forEach((client) => {
-    client.send(JSON.stringify({
-      type: 'onlineUsers',
-      data: [...wss.clients].map((c: SocketClient) => ({ id: c.id, username: c.username }))
-    }))
-  })
+  NotifyOnlineUsers()
 });
+

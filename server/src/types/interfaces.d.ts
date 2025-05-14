@@ -6,14 +6,25 @@ export interface User {
 }
 
 export interface Message {
-  type: string;
+  from: string;
   content: string;
   to: string;
 }
 
+export interface File {
+  name: string;
+  content: string;
+  to: string;
+  from: string;
+  info: {
+    type: string;
+    size: number;
+  }
+}
+
 export interface DataWs {
   type: string
-  data: Message
+  data: Message | File
 }
 
 export interface SocketClient extends WebSocket {
