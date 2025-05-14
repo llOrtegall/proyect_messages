@@ -117,3 +117,9 @@ export const userProfile = async (req: Request, res: Response) => {
   }
 
 }
+
+export const logoutUser = async (req: Request, res: Response) => {
+  res.clearCookie('token');
+  res.json({ message: 'Logout successful' });
+}
+  

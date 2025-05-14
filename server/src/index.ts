@@ -82,11 +82,6 @@ app.get('/api/v1/people', async (req, res) => {
   res.json(users);
 })
 
-app.get('/api/v1/logout', async (req, res) => {
-  res.clearCookie('token');
-  res.json({ message: 'Logout successful' });
-})
-
 const serverUp = app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
