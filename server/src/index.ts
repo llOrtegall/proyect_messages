@@ -33,7 +33,7 @@ app.get('/', (req, res) => {
 
 app.use('/api/v1', usersRouter);
 
-app.use('/uploads', express.static(__dirname + '/uploads'));
+app.use('/api/v1/uploads', express.static(__dirname + '/uploads/'));
 
 app.get('/api/v1/messages', async (req, res) => {
   const params = req.query;
@@ -157,7 +157,7 @@ wss.on('connection', async (conn: SocketClient, req) => {
       });
 
       [...wss.clients].forEach((c: SocketClient) => {
-        if(c.id === message.to){
+        if (c.id === message.to) {
           c.send(JSON.stringify({
             type: 'newMessage',
             data: msgData.data
@@ -165,16 +165,37 @@ wss.on('connection', async (conn: SocketClient, req) => {
         }
       })
     } else if (msgData.type === 'newFile' && msgData.data instanceof Object) {
-      const { name, type, size, content } = msgData.data as File;
+      const { name, content, to, from, info } = msgData.data as File;
 
       const parts = name.split('.');
       const extension = parts[parts.length - 1];
       const fileName = Date.now() + '.' + extension;
-      const path = __dirname + '/uploads/' + fileName;
-      const bufferData = Buffer.from(content, 'base64');
 
-      fs.writeFile(path, bufferData, () => {
-        console.log('File saved' + path);
+      const path = __dirname + '/uploads/' + fileName;
+      const bufferData = Buffer.from(content.split('base64,')[1], 'base64');
+
+      fs.writeFile(path, bufferData, async () => {
+        // Save Message 
+        await Messages.sync();
+        await Messages.create({ content: fileName, from, to });
+
+        [...wss.clients].forEach((c: SocketClient) => {
+          if (c.id === to) {
+            c.send(JSON.stringify({
+              type: 'newFile',
+              data: {
+                name: fileName,
+                content: path,
+                to,
+                from,
+                info: {
+                  type: info.type,
+                  size: info.size,
+                }
+              }
+            }))
+          }
+        })
       });
     }
   });
