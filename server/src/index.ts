@@ -177,7 +177,7 @@ wss.on('connection', async (conn: SocketClient, req) => {
       fs.writeFile(path, bufferData, async () => {
         // Save Message 
         await Messages.sync();
-        await Messages.create({ content: fileName, from, to });
+        await Messages.create({ content: fileName, from, to, file: true });
 
         [...wss.clients].forEach((c: SocketClient) => {
           if (c.id === to) {

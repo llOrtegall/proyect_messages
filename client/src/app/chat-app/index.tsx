@@ -157,6 +157,7 @@ export default function ChatApp() {
 			from: user?.id ?? '',
 			to: selectedContactId ?? '',
 			content: file.name,
+			file: true
 		}])
 	}
 

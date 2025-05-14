@@ -6,6 +6,7 @@ class Messages extends Model<InferAttributes<Messages>, InferCreationAttributes<
   declare content: string;
   declare from: string;
   declare to: string;
+  declare file?: boolean;
 }
 
 Messages.init({
@@ -13,6 +14,7 @@ Messages.init({
   content: { type: DataTypes.TEXT, allowNull: false },
   from: { type: DataTypes.STRING(36), allowNull: false },
   to: { type: DataTypes.STRING(36), allowNull: false },
+  file: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
 }, {
   sequelize: mysqlConn,
   timestamps: true,

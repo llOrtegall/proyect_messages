@@ -1,4 +1,4 @@
-import { File } from 'lucide-react';
+import { Image } from 'lucide-react';
 import axios from 'axios';
 
 interface MessageProps {
@@ -27,7 +27,7 @@ export function Message({ content, isFile, isOwnMessage, onClick }: MessageProps
           className={`inline-flex items-center gap-2 p-2 rounded-md ${fileClasses} hover:shadow-md transition-all duration-200 cursor-pointer`}
           onClick={onClick}
         >
-          <File className="w-5 h-5" />
+          <Image className="w-5 h-5" />
           <span className="truncate max-w-[200px]">{content}</span>
           <span className="text-xs text-gray-400">Open</span>
         </a>
