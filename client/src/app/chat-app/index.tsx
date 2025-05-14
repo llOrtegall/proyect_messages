@@ -1,11 +1,12 @@
-import { ArrowLeftFromLine, MessageSquare } from 'lucide-react';
+import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from 'react';
+import { ArrowLeftFromLine, File, MessageSquare } from 'lucide-react';
 import { FormSendMessage } from '@/components/form-sendMessage';
-import { FormEvent, useEffect, useRef, useState } from 'react';
 import { useWebSocket } from '@/hooks/useWebSokect';
 import { Avatar } from '@/components/ui/avatar';
 import { useAuth } from '@/auth/AuthProvider';
 import { Footer } from '@/components/footer';
 import axios from 'axios';
+import { Message } from '@/components/Message';
 
 const WS_URL = import.meta.env.VITE_WS_URL
 
@@ -13,6 +14,7 @@ interface Message {
 	content: string
 	from: string
 	to: string
+	file?: boolean
 }
 
 interface UserChat {
@@ -20,9 +22,19 @@ interface UserChat {
 	username: string
 }
 
+interface File {
+	name: string
+	from: string
+	to: string
+	info: {
+		type: string
+		size: number
+	}
+}
+
 interface MessageData {
 	type: string
-	data?: UserChat[] | Message
+	data?: UserChat[] | Message | File
 }
 
 export default function ChatApp() {
@@ -48,9 +60,7 @@ export default function ChatApp() {
 		if (messageData.type === 'newMessage' && messageData.data instanceof Object) {
 			const newMessage = messageData.data as Message
 			setMessages(prev => [...prev, newMessage])
-			console.log(messageData.data);
 
-			// if exist update count else add
 			setNotification(prev => {
 				const index = prev.findIndex((n) => n.from === newMessage.from)
 				if (index !== -1) {
@@ -59,6 +69,16 @@ export default function ChatApp() {
 				}
 				return [...prev, { from: newMessage.from, count: 1 }]
 			})
+		}
+
+		if (messageData.type === 'newFile' && messageData.data instanceof Object) {
+			const newFile = messageData.data as File
+			setMessages(prev => [...prev, {
+				from: newFile.from,
+				to: newFile.to,
+				content: newFile.name,
+				file: true
+			}])
 		}
 	}
 
@@ -107,9 +127,8 @@ export default function ChatApp() {
 		}
 	}
 
-	const handleSendFile = (e: FormEvent<HTMLInputElement>) => {
-		e.preventDefault()
-		const file = e.currentTarget.files?.[0];
+	const handleSendFile = (e: ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0];
 
 		if (!file) return
 
@@ -120,15 +139,25 @@ export default function ChatApp() {
 				type: 'newFile',
 				data: {
 					name: file.name,
-					type: file.type,
-					size: file.size,
 					content: reader.result,
 					to: selectedContactId,
-					from: user?.id
+					from: user?.id,
+					info: {
+						type: file.type,
+						size: file.size
+					}
 				}
 			}));
 		}
 
+		// reset input file
+		e.target.value = '';
+
+		setMessages(prev => [...prev, {
+			from: user?.id ?? '',
+			to: selectedContactId ?? '',
+			content: file.name,
+		}])
 	}
 
 	useEffect(() => {
@@ -191,17 +220,14 @@ export default function ChatApp() {
 					{
 						selectedContactId ? (
 							<section className='relative h-full'>
-								<ul className='overflow-y-auto absolute top-10 right-2 left-2 bottom-4 space-y-2'>
+								<ul className='overflow-y-auto absolute top-10 right-2 left-2 bottom-4 space-y-4'>
 									{messages.filter((message) => message.from === selectedContactId || message.to === selectedContactId).map((message, index) => (
-										<li
+										<Message
 											key={index}
-											className={`p-2 rounded-md max-w-[80%] ${message.from === user?.id
-												? 'ml-auto bg-blue-700 text-white'
-												: 'mr-auto bg-blue-200 text-black'
-												}`}
-										>
-											{message.content}
-										</li>
+											content={message.content}
+											isFile={message.file ?? false}
+											isOwnMessage={message.from === user?.id}
+										/>
 									))}
 									<div ref={messagesEndRef}></div>
 								</ul>
@@ -217,7 +243,7 @@ export default function ChatApp() {
 
 				{
 					!!selectedContactId && (
-						<FormSendMessage onSubmit={sendMessage} onSendFile={handleSendFile}/>
+						<FormSendMessage onSubmit={sendMessage} onSendFile={handleSendFile} />
 					)
 				}
 			</main>
