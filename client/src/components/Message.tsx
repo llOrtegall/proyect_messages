@@ -8,7 +8,7 @@ interface MessageProps {
   onClick?: () => void;
 }
 
-export function Message({ content, isFile, isOwnMessage, onClick }: MessageProps) {
+export function MessageComponent({ content, isFile, isOwnMessage, onClick }: MessageProps) {
   const messageClasses = isOwnMessage 
     ? 'bg-blue-700 text-white ml-auto' 
     : 'bg-blue-200 text-black mr-auto';

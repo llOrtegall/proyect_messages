@@ -1,41 +1,15 @@
 import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from 'react';
-import { ArrowLeftFromLine, File, MessageSquare } from 'lucide-react';
+import type { File, Message, MessageData, UserChat } from '@/types/interfaces';
+import { ArrowLeftFromLine, MessageSquare } from 'lucide-react';
 import { FormSendMessage } from '@/components/form-sendMessage';
+import { MessageComponent } from '@/components/Message';
 import { useWebSocket } from '@/hooks/useWebSokect';
 import { Avatar } from '@/components/ui/avatar';
 import { useAuth } from '@/auth/AuthProvider';
 import { Footer } from '@/components/footer';
 import axios from 'axios';
-import { Message } from '@/components/Message';
 
 const WS_URL = import.meta.env.VITE_WS_URL
-
-interface Message {
-	content: string
-	from: string
-	to: string
-	file?: boolean
-}
-
-interface UserChat {
-	id: string
-	username: string
-}
-
-interface File {
-	name: string
-	from: string
-	to: string
-	info: {
-		type: string
-		size: number
-	}
-}
-
-interface MessageData {
-	type: string
-	data?: UserChat[] | Message | File
-}
 
 export default function ChatApp() {
 	const [onlinePeople, setOnlinePeople] = useState<UserChat[]>([])
@@ -223,7 +197,7 @@ export default function ChatApp() {
 							<section className='relative h-full'>
 								<ul className='overflow-y-auto absolute top-10 right-2 left-2 bottom-4 space-y-4'>
 									{messages.filter((message) => message.from === selectedContactId || message.to === selectedContactId).map((message, index) => (
-										<Message
+										<MessageComponent
 											key={index}
 											content={message.content}
 											isFile={message.file ?? false}
