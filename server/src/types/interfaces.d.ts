@@ -13,9 +13,13 @@ export interface Message {
 
 export interface File {
   name: string;
-  type: string;
-  size: number;
   content: string;
+  to: string;
+  from: string;
+  info: {
+    type: string;
+    size: number;
+  }
 }
 
 export interface DataWs {
