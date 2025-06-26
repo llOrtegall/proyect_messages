@@ -1,9 +1,9 @@
-version: '3.7'
+version: '3.8'
 
 services:
-  db_messages:
+  database_chat:
     image: mysql:latest
-    container_name: db_messages
+    container_name: database_chat
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: ${ROOT_PASSWORD}
@@ -13,4 +13,4 @@ services:
     ports:
       - "9010:3306"
     volumes:
-      - ./db_messages_data:/var/lib/mysql
+      - ./database_chat_data:/var/lib/mysql
