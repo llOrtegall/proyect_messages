@@ -26,3 +26,5 @@ uploads
 *.sln
 *.sw?
 .env
+
+database_chat_data
