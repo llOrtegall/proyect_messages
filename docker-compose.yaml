@@ -6,8 +6,6 @@ services:
     image: nginx:latest
     container_name: web_chat
     restart: always
-    # ports:
-    #   - "9011:80"
     volumes:
       - ./client/dist:/usr/share/nginx/html
       - ./nginx.conf:/etc/nginx/nginx.conf
@@ -23,10 +21,6 @@ services:
     image: api_chat:v1
     container_name: api_chat_container
     restart: always
-    # ports:
-    #   - "3000:3000"
-    depends_on:
-      - database_chat
     networks:
       - internal_net
 
