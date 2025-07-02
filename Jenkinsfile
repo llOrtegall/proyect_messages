@@ -20,7 +20,7 @@ pipeline {
                     def ECC = readFile(CLIENT)
                     def EDO = readFile(DOCKER_ENV)
 
-                    writeFile file: './api/.env', text: EAC
+                    writeFile file: './server/.env', text: EAC
                     writeFile file: './client/.env', text: ECC
                     writeFile file: './.env', text: EDO
                 }
