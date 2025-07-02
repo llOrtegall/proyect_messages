@@ -1,13 +1,15 @@
-# Dockerfile para la API usando Bun
-FROM oven/bun:1.1.13-alpine
+# Dockerfile para la API usando Node.js
+FROM node:24-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN bun install --production
-
 COPY . .
+
+RUN npm i -g bun \
+    && bun install --frozen-lockfile \
+    && bun run build
+
 
 EXPOSE 3000
 
-CMD ["bun", "start"]
+CMD ["npm", "start"]

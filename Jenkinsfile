@@ -22,7 +22,7 @@ pipeline {
 
                     writeFile file: './api/.env', text: EAC
                     writeFile file: './client/.env', text: ECC
-                    writeFile file: './', text: EDO
+                    writeFile file: './.env', text: EDO
                 }
             }
         }

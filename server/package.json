@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "tcs",
-    "start": "bun run --env-file=.env dist/index.js",
+    "start": "node --env-file=.env ./dist/index.js",
     "dev": "bun run --env-file=.env --watch ./src/index.ts"
   },
   "keywords": [],
