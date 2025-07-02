@@ -1,10 +1,10 @@
-import { File, DataWs, SocketClient, Message } from './types/interfaces';
-import { verifyToken } from './services/tokenVerifyToken';
-import { PORT, CLIENT_URL } from './schemas/envSchema';
-import { mysqlConn } from './connection/mysql';
-import { usersRouter } from './routes/users';
-import { Messages } from './models/messages';
-import { Users } from './models/users';
+import { File, DataWs, SocketClient, Message } from './src/types/interfaces';
+import { verifyToken } from './src/services/tokenVerifyToken';
+import { PORT, CLIENT_URL } from './src/schemas/envSchema';
+import { mysqlConn } from './src/connection/mysql';
+import { usersRouter } from './src/routes/users';
+import { Messages } from './src/models/messages';
+import { Users } from './src/models/users';
 import { WebSocketServer } from 'ws';
 import cookie from 'cookie-parser';
 import { Op } from 'sequelize';
