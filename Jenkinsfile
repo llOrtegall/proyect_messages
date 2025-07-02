@@ -8,7 +8,6 @@ pipeline {
     environment {
         API = credentials('MSG_API')
         CLIENT = credentials('MSG_CLIENT')
-        DOCKER_ENV = credentials('MSG_DOCKER_ENV')
     }
 
     stages {
@@ -38,11 +37,9 @@ pipeline {
                 script {
                     def EAC = readFile(API)
                     def ECC = readFile(CLIENT)
-                    def EDO = readFile(DOCKER_ENV)
 
                     writeFile file: './server/.env', text: EAC
                     writeFile file: './client/.env', text: ECC
-                    writeFile file: './.env', text: EDO
                 }
             }
         }

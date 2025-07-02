@@ -16,22 +16,6 @@ services:
     networks:
       - internal_net
 
-  database_chat:
-    image: mysql:latest
-    container_name: database_chat
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: ${ROOT_PASSWORD}
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-    # ports:
-    #   - "9010:3306"
-    volumes:
-      - ./database_chat_data:/var/lib/mysql
-    networks:
-      - internal_net
-
   api_chat:
     build:
       context: ./server
@@ -49,4 +33,3 @@ services:
 networks:
   internal_net:
     external: true
-    name: internal_net
