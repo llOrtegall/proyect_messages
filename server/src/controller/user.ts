@@ -1,10 +1,10 @@
+import { verifyToken } from '../services/tokenVerifyToken';
+import { validateSchema } from '../validator/services';
 import { JWT_SECRET } from '../schemas/envSchema';
 import { Request, Response } from 'express';
 import { Users } from '../models/users';
 import jwt from 'jsonwebtoken';
 import bcript from 'bcryptjs';
-import { validateSchema } from '../../schemas/services';
-import { verifyToken } from '../services/tokenVerifyToken';
 
 export const registerUser = async (req: Request, res: Response) => {
   const { username, password } = req.body;
