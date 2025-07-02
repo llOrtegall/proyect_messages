@@ -92,7 +92,9 @@ mysqlConn.authenticate().then(() => {
   console.log(err);
 })
 
-const wss = new WebSocketServer({ server: serverUp });
+
+// WebSocket en path '/ws'
+const wss = new WebSocketServer({ server: serverUp, path: '/ws' });
 
 wss.on('connection', async (conn: SocketClient, req) => {
 
