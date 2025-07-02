@@ -40,3 +40,8 @@ services:
     #   - "3000:3000"
     networks:
       - internal_net
+
+networks:
+  internal_net:
+    external: true
+    name: internal_net
