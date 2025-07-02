@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+
   web_chat:
     image: nginx:latest
     container_name: web_chat
@@ -10,6 +11,8 @@ services:
     volumes:
       - ./client/dist:/usr/share/nginx/html
       - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - api_chat
     networks:
       - internal_net
 
@@ -38,6 +41,8 @@ services:
     restart: always
     # ports:
     #   - "3000:3000"
+    depends_on:
+      - database_chat
     networks:
       - internal_net
 
