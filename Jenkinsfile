@@ -13,6 +13,26 @@ pipeline {
 
     stages {
 
+        stage('Detener contenedores'){
+            steps {
+                script {
+                    sh 'docker compose down'
+                }
+            }
+        }
+
+        stage('Delete image if exists'){
+            steps {
+                script {
+                    def imageName = 'api_chat:v1'
+                    def images = sh(script: "docker images -q ${imageName}", returnStdout: true).trim()
+                    if (images) {
+                        sh "docker rmi ${images}"
+                    }
+                }
+            }
+        }
+
         stage('Copy .env files') {
             steps {
                 script {
