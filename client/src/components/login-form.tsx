@@ -5,15 +5,12 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/auth/AuthProvider";
 import { FormEvent, useState } from "react";
 import { User } from "@/types/interfaces";
-import { cn } from "@/lib/utils";
 import axios from "axios";
 
-export function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
+export default function LoginForm() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const { setUser } = useAuth()
-
-  const navigate = useNavigate()
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -30,14 +27,11 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
   }
 
   const handlClickRegister = () => {
-    navigate('/register')
+    console.log('clik');
   }
 
   return (
-    <div className={cn(
-      "min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100",
-      className
-    )} {...props}>
+    <div className="h-screen w-full flex items-center justify-center">
       <Card className="w-full max-w-md shadow-xl rounded-2xl border border-gray-200 bg-white/80 backdrop-blur-md">
         <CardHeader className="flex flex-col items-center gap-2">
           {/* Icono de usuario */}
