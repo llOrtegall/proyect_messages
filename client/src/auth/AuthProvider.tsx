@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { IAuthContext, User } from '@/types/interfaces';
-import axios from 'axios';
 import { useLocation } from 'wouter';
+import axios from 'axios';
 
 const AuthContext = createContext<IAuthContext | undefined>(undefined)
 
@@ -19,15 +19,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     .catch((error) => {
       if (error.response?.status === 401) {
         setUser(null)
+        location('/login')
       } else {
         console.error('Error fetching user profile:', error)
       }
-    }).finally(() => {
-      location('/login')
     })
   }, [])
-
-
   
   return (
     <AuthContext.Provider value={{ user, setUser }}>

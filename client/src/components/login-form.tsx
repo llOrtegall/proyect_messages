@@ -18,18 +18,18 @@ export default function LoginForm() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     try {
-      const response = await axios.post<User>("/login", { username, password });
+      const response = await axios.post<User>("/api/v1/login", { username, password });
       const { id, username: uname } = response.data;
       const userData: User = { id, username: uname };
       setUser(userData);
-      setLocation("/home"); // Redirige a /home tras login exitoso
+      setLocation("/home"); 
     } catch (error) {
       console.error(error);
     }
   }
 
   const handlClickRegister = () => {
-    console.log('clik');
+    setLocation("/register");
   }
 
   return (
