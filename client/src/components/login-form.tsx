@@ -5,25 +5,27 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/auth/AuthProvider";
 import { FormEvent, useState } from "react";
 import { User } from "@/types/interfaces";
+import { useLocation } from "wouter";
 import axios from "axios";
 
 export default function LoginForm() {
-  const [username, setUsername] = useState("")
-  const [password, setPassword] = useState("")
-  const { setUser } = useAuth()
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const { setUser } = useAuth();
+  
+  const [, setLocation] = useLocation();
 
   async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
-
-    axios.post<User>('/login', { username, password })
-      .then((response) => {
-        const { id, username } = response.data
-        const userData: User = { id, username }
-        setUser(userData)
-      })
-      .catch((error) => {
-        console.error(error)
-      })
+    e.preventDefault();
+    try {
+      const response = await axios.post<User>("/login", { username, password });
+      const { id, username: uname } = response.data;
+      const userData: User = { id, username: uname };
+      setUser(userData);
+      setLocation("/home"); // Redirige a /home tras login exitoso
+    } catch (error) {
+      console.error(error);
+    }
   }
 
   const handlClickRegister = () => {
