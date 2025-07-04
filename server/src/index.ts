@@ -162,26 +162,22 @@ wss.on('connection', async (conn: SocketClient, req) => {
         }
       })
     } else if (msgData.type === 'newFile' && msgData.data instanceof Object) {
-      const { name, content, to, from, info } = msgData.data as File;
+      const { name, content, to, from, info } = msgData.data as File;      
 
-      const parts = name.split('.');
-      const extension = parts[parts.length - 1];
-      const fileName = Date.now() + '.' + extension;
-
-      const path = __dirname + '/uploads/' + fileName;
+      const path = __dirname + '/uploads/' + name;
       const bufferData = Buffer.from(content.split('base64,')[1], 'base64');
 
       fs.writeFile(path, bufferData, async () => {
         // Save Message 
         await Messages.sync();
-        await Messages.create({ content: fileName, from, to, file: true });
+        await Messages.create({ content: name, from, to, file: true });
 
         [...wss.clients].forEach((c: SocketClient) => {
           if (c.id === to) {
             c.send(JSON.stringify({
               type: 'newFile',
               data: {
-                name: fileName,
+                name: name,
                 content: path,
                 to,
                 from,
@@ -194,6 +190,7 @@ wss.on('connection', async (conn: SocketClient, req) => {
           }
         })
       });
+
     }
   });
 
