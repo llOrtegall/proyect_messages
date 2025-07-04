@@ -29,7 +29,10 @@ export const registerUser = async (req: Request, res: Response) => {
     })
 
   } catch (error) {
-    console.error(error);
+    if(error instanceof Error && error.name === 'SequelizeUniqueConstraintError') {
+      res.status(400).json({ message: 'Username already exists' });
+      return;
+    }
     res.status(500).json({ message: 'Internal server error' });
   }
 }

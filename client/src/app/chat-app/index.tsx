@@ -105,6 +105,9 @@ export default function ChatApp() {
 		const file = e.target.files?.[0];
 
 		if (!file) return
+		const dateGenerated = Date.now();
+		const extension = file.name.split('.').pop() || 'file';
+		const nameFile = `${dateGenerated}.${extension}`;
 
 		const reader = new FileReader()
 		reader.readAsDataURL(file)
@@ -112,7 +115,7 @@ export default function ChatApp() {
 			ws?.send(JSON.stringify({
 				type: 'newFile',
 				data: {
-					name: file.name,
+					name: nameFile,
 					content: reader.result,
 					to: selectedContactId,
 					from: user?.id,
@@ -122,17 +125,17 @@ export default function ChatApp() {
 					}
 				}
 			}));
+
+			setMessages(prev => [...prev, {
+				from: user?.id ?? '',
+				to: selectedContactId ?? '',
+				content: nameFile,
+				file: true
+			}])
 		}
 
 		// reset input file
 		e.target.value = '';
-
-		setMessages(prev => [...prev, {
-			from: user?.id ?? '',
-			to: selectedContactId ?? '',
-			content: file.name,
-			file: true
-		}])
 	}
 
 	useEffect(() => {

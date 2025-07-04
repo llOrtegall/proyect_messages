@@ -2,8 +2,8 @@ import { AuthProvider } from "./auth/AuthProvider";
 import { Route, Router } from "wouter";
 import { lazy, Suspense } from "react";
 
-const RegisterPage = lazy(() => import("@/components/register"));
-const LoginForm = lazy(() => import("./components/login-form"));
+const RegisterPage = lazy(() => import("@/app/register"));
+const LoginForm = lazy(() => import("@/app/login"));
 const ChatApp = lazy(() => import("@/app/chat-app"));
 
 function App() {
