@@ -3,7 +3,6 @@ import { useAuth } from "./auth-context";
 
 export interface WsMessage {
   type: string;
-  id?: string;
   refId?: string;
   payload: unknown;
   ts: number;
@@ -22,7 +21,7 @@ interface MessagePayload {
 }
 
 export type BusEvent =
-  | { kind: "message.created"; message: MessagePayload; refId?: string; originUserId: string }
+  | { kind: "message.created"; message: MessagePayload; originUserId: string }
   | { kind: "message.edited"; message: MessagePayload }
   | { kind: "message.deleted"; messageId: string; roomId: string }
   | { kind: "message.read"; roomId: string; userId: string; messageId: string }
@@ -55,7 +54,7 @@ function parseEvent(msg: WsMessage): BusEvent | null {
   }
 }
 
-export function useWebSocket(roomId: string | null, onEvent?: (event: BusEvent) => void) {
+export function useWebSocket(roomIds: string[], onEvent?: (event: BusEvent) => void) {
   const { accessToken } = useAuth();
   const [connected, setConnected] = useState(false);
 
@@ -66,16 +65,21 @@ export function useWebSocket(roomId: string | null, onEvent?: (event: BusEvent) 
   const activeRef = useRef(false);
 
   const accessTokenRef = useRef(accessToken);
-  const roomIdRef = useRef(roomId);
+  const roomIdsRef = useRef(roomIds);
   const onEventRef = useRef(onEvent);
   accessTokenRef.current = accessToken;
-  roomIdRef.current = roomId;
+  roomIdsRef.current = roomIds;
   onEventRef.current = onEvent;
+
+  const subscribe = useCallback((ws: WebSocket, ids: string[]) => {
+    if (ids.length > 0 && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "chat.subscribe", payload: { roomIds: ids } }));
+    }
+  }, []);
 
   const connect = useCallback(() => {
     const token = accessTokenRef.current;
-    const room = roomIdRef.current;
-    if (!token || !room || !activeRef.current) return;
+    if (!token || !activeRef.current) return;
 
     const state = wsRef.current?.readyState;
     if (state === WebSocket.CONNECTING || state === WebSocket.OPEN) return;
@@ -91,7 +95,7 @@ export function useWebSocket(roomId: string | null, onEvent?: (event: BusEvent) 
     ws.onopen = () => {
       setConnected(true);
       retryCountRef.current = 0;
-      ws.send(JSON.stringify({ type: "chat.subscribe", payload: { roomIds: [roomIdRef.current] } }));
+      subscribe(ws, roomIdsRef.current);
       heartbeatRef.current = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: "presence.heartbeat", payload: {} }));
@@ -113,10 +117,7 @@ export function useWebSocket(roomId: string | null, onEvent?: (event: BusEvent) 
     ws.onclose = () => {
       setConnected(false);
       wsRef.current = null;
-      if (heartbeatRef.current) {
-        clearInterval(heartbeatRef.current);
-        heartbeatRef.current = null;
-      }
+      if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
       if (!activeRef.current) return;
       const delay = Math.min(1_000 * 2 ** retryCountRef.current, MAX_RETRY_DELAY_MS);
       retryCountRef.current = Math.min(retryCountRef.current + 1, 5);
@@ -124,29 +125,33 @@ export function useWebSocket(roomId: string | null, onEvent?: (event: BusEvent) 
     };
 
     ws.onerror = () => setConnected(false);
-  }, []);
+  }, [subscribe]);
 
+  // Connect/disconnect lifecycle
   useEffect(() => {
-    if (!accessToken || !roomId) return;
-
+    if (!accessToken) return;
     activeRef.current = true;
     retryCountRef.current = 0;
     connect();
-
     return () => {
       activeRef.current = false;
-      if (retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current);
-        retryTimeoutRef.current = null;
-      }
-      if (heartbeatRef.current) {
-        clearInterval(heartbeatRef.current);
-        heartbeatRef.current = null;
-      }
+      if (retryTimeoutRef.current) { clearTimeout(retryTimeoutRef.current); retryTimeoutRef.current = null; }
+      if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
       wsRef.current?.close();
       wsRef.current = null;
     };
-  }, [accessToken, roomId, connect]);
+  }, [accessToken, connect]);
+
+  // Re-subscribe when roomIds grow (new rooms discovered via polling)
+  const prevIdsRef = useRef<string>("");
+  useEffect(() => {
+    const joined = [...roomIds].sort().join(",");
+    if (joined === prevIdsRef.current) return;
+    prevIdsRef.current = joined;
+    if (wsRef.current?.readyState === WebSocket.OPEN && roomIds.length > 0) {
+      subscribe(wsRef.current, roomIds);
+    }
+  }, [roomIds, subscribe]);
 
   const sendWs = useCallback((type: string, payload: unknown) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {

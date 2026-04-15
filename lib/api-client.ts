@@ -171,6 +171,11 @@ class ApiClient {
     return response.user;
   }
 
+  async listUsers() {
+    const response = await this.request<{ users: (PublicUser & { isOnline: boolean })[] }>("/api/v1/users", "GET");
+    return response.users;
+  }
+
   // Rooms
   async listRooms() {
     const response = await this.request<{ rooms: RoomDto[] }>("/api/v1/rooms", "GET");
@@ -232,6 +237,10 @@ class ApiClient {
 
   deleteMessage(messageId: string) {
     return this.request(`/api/v1/messages/${messageId}`, "DELETE");
+  }
+
+  deleteRoom(roomId: string) {
+    return this.request(`/api/v1/rooms/${roomId}`, "DELETE");
   }
 }
 
