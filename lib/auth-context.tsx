@@ -14,58 +14,83 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function persistTokens(accessToken: string, refreshToken: string) {
+  localStorage.setItem("accessToken", accessToken);
+  localStorage.setItem("refreshToken", refreshToken);
+}
+
+function clearTokens() {
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<PublicUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("accessToken");
-    if (token) {
-      apiClient.setAccessToken(token);
-      setAccessToken(token);
-      apiClient
-        .getMe()
-        .then((user) => setUser(user))
-        .catch(() => {
-          localStorage.removeItem("accessToken");
-          setAccessToken(null);
-        })
-        .finally(() => setLoading(false));
-    } else {
+    // Wire up token refresh callbacks once on mount.
+    // setUser/setAccessToken are stable React dispatch functions.
+    apiClient.setOnTokensRefreshed(({ accessToken: at, refreshToken: rt }) => {
+      persistTokens(at, rt);
+      setAccessToken(at);
+    });
+
+    apiClient.setOnAuthExpired(() => {
+      clearTokens();
+      setUser(null);
+      setAccessToken(null);
+    });
+  }, []);
+
+  useEffect(() => {
+    const storedAccess = localStorage.getItem("accessToken");
+    const storedRefresh = localStorage.getItem("refreshToken");
+
+    if (!storedAccess) {
       setLoading(false);
+      return;
     }
+
+    apiClient.setTokens(storedAccess, storedRefresh);
+    setAccessToken(storedAccess);
+
+    apiClient
+      .getMe()
+      .then((u) => setUser(u))
+      .catch(() => {
+        clearTokens();
+        apiClient.setTokens(null, null);
+        setAccessToken(null);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const login = async (email: string, password: string) => {
     const response = await apiClient.login(email, password);
-    apiClient.setAccessToken(response.accessToken);
-    localStorage.setItem("accessToken", response.accessToken);
-    localStorage.setItem("refreshToken", response.refreshToken);
+    apiClient.setTokens(response.accessToken, response.refreshToken);
+    persistTokens(response.accessToken, response.refreshToken);
     setAccessToken(response.accessToken);
     setUser(response.user);
   };
 
   const register = async (email: string, password: string, displayName: string) => {
     const response = await apiClient.register(email, password, displayName);
-    apiClient.setAccessToken(response.accessToken);
-    localStorage.setItem("accessToken", response.accessToken);
-    localStorage.setItem("refreshToken", response.refreshToken);
+    apiClient.setTokens(response.accessToken, response.refreshToken);
+    persistTokens(response.accessToken, response.refreshToken);
     setAccessToken(response.accessToken);
     setUser(response.user);
   };
 
   const logout = async () => {
-    if (accessToken) {
-      try {
-        await apiClient.logout(accessToken);
-      } catch (e) {
-        console.error("Logout error:", e);
-      }
+    try {
+      await apiClient.logout();
+    } catch {
+      // ignore — clear session regardless
     }
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    apiClient.setAccessToken(null);
+    clearTokens();
+    apiClient.setTokens(null, null);
     setAccessToken(null);
     setUser(null);
   };
