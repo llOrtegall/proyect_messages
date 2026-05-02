@@ -71,6 +71,8 @@ export function useWebSocket(roomIds: string[], onEvent?: (event: BusEvent) => v
   roomIdsRef.current = roomIds;
   onEventRef.current = onEvent;
 
+  const pendingRef = useRef<Map<string, { resolve: (v: unknown) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>>(new Map());
+
   const subscribe = useCallback((ws: WebSocket, ids: string[]) => {
     if (ids.length > 0 && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: "chat.subscribe", payload: { roomIds: ids } }));
@@ -106,7 +108,25 @@ export function useWebSocket(roomIds: string[], onEvent?: (event: BusEvent) => v
     ws.onmessage = (rawEvent) => {
       try {
         const msg = JSON.parse(rawEvent.data as string) as WsMessage;
-        if (msg.type === "ack" || msg.type === "error") return;
+        if (msg.type === "ack") {
+          const pending = pendingRef.current.get(msg.refId ?? "");
+          if (pending) {
+            clearTimeout(pending.timer);
+            pending.resolve(msg.payload);
+            pendingRef.current.delete(msg.refId ?? "");
+          }
+          return;
+        }
+        if (msg.type === "error") {
+          const pending = pendingRef.current.get(msg.refId ?? "");
+          if (pending) {
+            clearTimeout(pending.timer);
+            const payload = msg.payload as { message?: string } | undefined;
+            pending.reject(new Error(payload?.message || "WS error"));
+            pendingRef.current.delete(msg.refId ?? "");
+          }
+          return;
+        }
         const busEvent = parseEvent(msg);
         if (busEvent) onEventRef.current?.(busEvent);
       } catch {
@@ -118,6 +138,11 @@ export function useWebSocket(roomIds: string[], onEvent?: (event: BusEvent) => v
       setConnected(false);
       wsRef.current = null;
       if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
+      for (const pending of pendingRef.current.values()) {
+        clearTimeout(pending.timer);
+        pending.reject(new Error("WebSocket disconnected"));
+      }
+      pendingRef.current.clear();
       if (!activeRef.current) return;
       const delay = Math.min(1_000 * 2 ** retryCountRef.current, MAX_RETRY_DELAY_MS);
       retryCountRef.current = Math.min(retryCountRef.current + 1, 5);
@@ -137,6 +162,11 @@ export function useWebSocket(roomIds: string[], onEvent?: (event: BusEvent) => v
       activeRef.current = false;
       if (retryTimeoutRef.current) { clearTimeout(retryTimeoutRef.current); retryTimeoutRef.current = null; }
       if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
+      for (const pending of pendingRef.current.values()) {
+        clearTimeout(pending.timer);
+        pending.reject(new Error("WebSocket disconnected"));
+      }
+      pendingRef.current.clear();
       wsRef.current?.close();
       wsRef.current = null;
     };
@@ -159,5 +189,26 @@ export function useWebSocket(roomIds: string[], onEvent?: (event: BusEvent) => v
     }
   }, []);
 
-  return { connected, sendWs };
+  const sendWsRequest = useCallback((type: string, payload: unknown): Promise<unknown> => {
+    return new Promise((resolve, reject) => {
+      const ws = wsRef.current;
+      if (ws?.readyState !== WebSocket.OPEN) {
+        reject(new Error("WebSocket not connected"));
+        return;
+      }
+      const refId = typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const timer = setTimeout(() => {
+        if (pendingRef.current.has(refId)) {
+          pendingRef.current.delete(refId);
+          reject(new Error("WebSocket request timeout"));
+        }
+      }, 10000);
+      pendingRef.current.set(refId, { resolve, reject, timer });
+      ws.send(JSON.stringify({ type, payload, refId }));
+    });
+  }, []);
+
+  return { connected, sendWs, sendWsRequest };
 }
