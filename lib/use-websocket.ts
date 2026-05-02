@@ -9,44 +9,51 @@ export interface WsMessage {
   ts: number;
 }
 
+interface MessagePayload {
+  id: string;
+  roomId: string;
+  senderId: string;
+  body: string;
+  attachmentKey: string | null;
+  attachmentMeta: Record<string, unknown> | null;
+  editedAt: Date | null;
+  deletedAt: Date | null;
+  createdAt: Date;
+}
+
 export type BusEvent =
-  | {
-      kind: "message.created";
-      message: {
-        id: string;
-        roomId: string;
-        senderId: string;
-        body: string;
-        attachmentKey: string | null;
-        attachmentMeta: Record<string, unknown> | null;
-        editedAt: Date | null;
-        deletedAt: Date | null;
-        createdAt: Date;
-      };
-      refId?: string;
-      originUserId: string;
-    }
-  | {
-      kind: "message.edited";
-      message: {
-        id: string;
-        roomId: string;
-        senderId: string;
-        body: string;
-        attachmentKey: string | null;
-        attachmentMeta: Record<string, unknown> | null;
-        editedAt: Date | null;
-        deletedAt: Date | null;
-        createdAt: Date;
-      };
-    }
+  | { kind: "message.created"; message: MessagePayload; refId?: string; originUserId: string }
+  | { kind: "message.edited"; message: MessagePayload }
   | { kind: "message.deleted"; messageId: string; roomId: string }
   | { kind: "message.read"; roomId: string; userId: string; messageId: string }
   | { kind: "user.typing"; roomId: string; userId: string }
-  | { kind: "user.online"; userId: string; roomId?: string }
-  | { kind: "user.offline"; userId: string; roomId?: string };
+  | { kind: "user.online"; userId: string }
+  | { kind: "user.offline"; userId: string };
 
 const MAX_RETRY_DELAY_MS = 30_000;
+const HEARTBEAT_INTERVAL_MS = 20_000;
+
+function parseEvent(msg: WsMessage): BusEvent | null {
+  const p = msg.payload as Record<string, unknown>;
+  switch (msg.type) {
+    case "message.created":
+      return { kind: "message.created", message: p as unknown as MessagePayload, originUserId: p.senderId as string };
+    case "message.edited":
+      return { kind: "message.edited", message: p as unknown as MessagePayload };
+    case "message.deleted":
+      return { kind: "message.deleted", messageId: p.messageId as string, roomId: p.roomId as string };
+    case "message.read":
+      return { kind: "message.read", roomId: p.roomId as string, userId: p.userId as string, messageId: p.messageId as string };
+    case "user.typing":
+      return { kind: "user.typing", roomId: p.roomId as string, userId: p.userId as string };
+    case "presence.online":
+      return { kind: "user.online", userId: p.userId as string };
+    case "presence.offline":
+      return { kind: "user.offline", userId: p.userId as string };
+    default:
+      return null;
+  }
+}
 
 export function useWebSocket(roomId: string | null, onEvent?: (event: BusEvent) => void) {
   const { accessToken } = useAuth();
@@ -54,10 +61,10 @@ export function useWebSocket(roomId: string | null, onEvent?: (event: BusEvent) 
 
   const wsRef = useRef<WebSocket | null>(null);
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const retryCountRef = useRef(0);
   const activeRef = useRef(false);
 
-  // Stable refs so connect() doesn't need them as deps
   const accessTokenRef = useRef(accessToken);
   const roomIdRef = useRef(roomId);
   const onEventRef = useRef(onEvent);
@@ -65,7 +72,6 @@ export function useWebSocket(roomId: string | null, onEvent?: (event: BusEvent) 
   roomIdRef.current = roomId;
   onEventRef.current = onEvent;
 
-  // Stable connect function — reads all mutable values from refs
   const connect = useCallback(() => {
     const token = accessTokenRef.current;
     const room = roomIdRef.current;
@@ -74,7 +80,7 @@ export function useWebSocket(roomId: string | null, onEvent?: (event: BusEvent) 
     const state = wsRef.current?.readyState;
     if (state === WebSocket.CONNECTING || state === WebSocket.OPEN) return;
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || window.location.origin;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
     const wsUrl = new URL("/ws", apiUrl);
     wsUrl.protocol = apiUrl.startsWith("https") ? "wss:" : "ws:";
     wsUrl.searchParams.set("token", token);
@@ -85,15 +91,20 @@ export function useWebSocket(roomId: string | null, onEvent?: (event: BusEvent) 
     ws.onopen = () => {
       setConnected(true);
       retryCountRef.current = 0;
-      ws.send(JSON.stringify({ type: "subscribe", payload: { roomId: room } }));
+      ws.send(JSON.stringify({ type: "chat.subscribe", payload: { roomIds: [roomIdRef.current] } }));
+      heartbeatRef.current = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "presence.heartbeat", payload: {} }));
+        }
+      }, HEARTBEAT_INTERVAL_MS);
     };
 
-    ws.onmessage = (event) => {
+    ws.onmessage = (rawEvent) => {
       try {
-        const msg = JSON.parse(event.data as string) as WsMessage;
-        if (msg.payload && typeof msg.payload === "object" && "kind" in msg.payload) {
-          onEventRef.current?.(msg.payload as BusEvent);
-        }
+        const msg = JSON.parse(rawEvent.data as string) as WsMessage;
+        if (msg.type === "ack" || msg.type === "error") return;
+        const busEvent = parseEvent(msg);
+        if (busEvent) onEventRef.current?.(busEvent);
       } catch {
         // ignore malformed frames
       }
@@ -102,15 +113,18 @@ export function useWebSocket(roomId: string | null, onEvent?: (event: BusEvent) 
     ws.onclose = () => {
       setConnected(false);
       wsRef.current = null;
+      if (heartbeatRef.current) {
+        clearInterval(heartbeatRef.current);
+        heartbeatRef.current = null;
+      }
       if (!activeRef.current) return;
-      // Exponential backoff: 1s → 2s → 4s → 8s → 16s → 30s (cap)
       const delay = Math.min(1_000 * 2 ** retryCountRef.current, MAX_RETRY_DELAY_MS);
       retryCountRef.current = Math.min(retryCountRef.current + 1, 5);
       retryTimeoutRef.current = setTimeout(connect, delay);
     };
 
     ws.onerror = () => setConnected(false);
-  }, []); // stable — no deps, reads from refs
+  }, []);
 
   useEffect(() => {
     if (!accessToken || !roomId) return;
@@ -125,16 +139,20 @@ export function useWebSocket(roomId: string | null, onEvent?: (event: BusEvent) 
         clearTimeout(retryTimeoutRef.current);
         retryTimeoutRef.current = null;
       }
+      if (heartbeatRef.current) {
+        clearInterval(heartbeatRef.current);
+        heartbeatRef.current = null;
+      }
       wsRef.current?.close();
       wsRef.current = null;
     };
   }, [accessToken, roomId, connect]);
 
-  const send = useCallback((event: BusEvent) => {
+  const sendWs = useCallback((type: string, payload: unknown) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "event", payload: event }));
+      wsRef.current.send(JSON.stringify({ type, payload }));
     }
   }, []);
 
-  return { connected, send };
+  return { connected, sendWs };
 }
