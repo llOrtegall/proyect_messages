@@ -11,12 +11,13 @@ interface ChatViewProps {
   roomId: string;
   connected: boolean;
   sendWs: (type: string, payload: unknown) => void;
+  sendWsRequest: (type: string, payload: unknown) => Promise<unknown>;
   latestEvent: { event: BusEvent; seq: number } | null;
   onBack: () => void;
   onRoomDeleted?: () => void;
 }
 
-export function ChatView({ roomId, connected, sendWs, latestEvent, onBack, onRoomDeleted }: ChatViewProps) {
+export function ChatView({ roomId, connected, sendWs, sendWsRequest, latestEvent, onBack, onRoomDeleted }: ChatViewProps) {
   const [room, setRoom] = useState<RoomWithMembersDto | null>(null);
   const [messages, setMessages] = useState<MessageDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,8 +94,7 @@ export function ChatView({ roomId, connected, sendWs, latestEvent, onBack, onRoo
     setSending(true);
     setError("");
     try {
-      const message = await apiClient.sendMessage(roomId, messageBody);
-      setMessages((prev) => prev.some((m) => m.id === message.id) ? prev : sortAsc([...prev, message]));
+      await sendWsRequest("chat.send", { roomId, body: messageBody.trim() });
       setMessageBody("");
     } catch {
       setError("No se pudo enviar el mensaje");
