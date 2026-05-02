@@ -25,18 +25,18 @@ export function ChatLayout() {
   return (
     <div className="flex h-screen bg-slate-900 text-slate-100">
       {/* Sidebar */}
-      <div className="w-64 flex flex-col border-r">
+      <div className="w-64 flex flex-col border-r border-slate-700">
         <RoomsList
           selectedRoomId={selectedRoomId}
           onSelectRoom={setSelectedRoomId}
           onCreateRoom={() => setShowCreateModal(true)}
         />
-        <div className="p-4 border-t">
+        <div className="p-3 border-t border-slate-700">
           <button
             onClick={handleLogout}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 rounded-lg transition text-sm"
+            className="w-full bg-slate-800 hover:bg-red-900/60 hover:text-red-400 text-slate-400 font-medium py-2 rounded-lg transition text-sm"
           >
-            Logout
+            Cerrar sesión
           </button>
         </div>
       </div>
