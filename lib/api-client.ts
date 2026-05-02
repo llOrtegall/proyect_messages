@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 export interface ApiError {
   error: string;
@@ -25,7 +25,7 @@ export interface PublicUser {
 
 export interface RoomDto {
   id: string;
-  kind: string;
+  kind: "dm" | "group";
   name: string | null;
   createdBy: string | null;
   lastMessageAt: Date | null;
