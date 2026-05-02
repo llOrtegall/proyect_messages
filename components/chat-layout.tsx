@@ -80,7 +80,7 @@ export function ChatLayout() {
     setLatestEvent({ event, seq: Date.now() });
   }, []);
 
-  const { connected, sendWs } = useWebSocket(roomIds, handleGlobalEvent);
+  const { connected, sendWs, sendWsRequest } = useWebSocket(roomIds, handleGlobalEvent);
 
   // Select a room → clear its badge
   const selectRoom = useCallback((roomId: string) => {
@@ -161,6 +161,7 @@ export function ChatLayout() {
             roomId={selectedRoomId}
             connected={connected}
             sendWs={sendWs}
+            sendWsRequest={sendWsRequest}
             latestEvent={latestEvent}
             onBack={() => setSelectedRoomId(null)}
             onRoomDeleted={handleRoomDeleted}
